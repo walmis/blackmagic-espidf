@@ -1,0 +1,11 @@
+[submodule "blackmagic-esp8266"]
+path = components/blackmagic-esp8266
+url = https://github.com/walmis/blackmagic-esp8266.git
+
+[submodule "esp32-espfs"]
+path = components/esp32-espfs
+url = https://github.com/walmis/esp32-espfs.git
+
+[submodule "libesphttpd"]
+path = components/libesphttpd
+url = https://github.com/walmis/libesphttpd.git
