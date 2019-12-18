@@ -9,3 +9,6 @@ url = https://github.com/walmis/esp32-espfs.git
 [submodule "libesphttpd"]
 path = components/libesphttpd
 url = https://github.com/walmis/libesphttpd.git
+[submodule "ESP8266_RTOS_SDK"]
+	path = ESP8266_RTOS_SDK
+	url = https://github.com/espressif/ESP8266_RTOS_SDK.git
