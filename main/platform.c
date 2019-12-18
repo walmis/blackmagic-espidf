@@ -56,12 +56,15 @@
 #include "driver/uart.h"
 #include "driver/gpio.h"
 
+#include "ota-tftp.h"
+
 #define ACCESS_POINT_MODE
 #define AP_SSID	 "blackmagic"
 #define AP_PSK	 "helloworld"
 
 nvs_handle h_nvs_conf;
 
+uint32_t uart_overruns;
 
 static struct netconn *uart_client_sock;
 static struct netconn *uart_serv_sock;
@@ -125,28 +128,6 @@ void platform_delay(uint32_t ms) {
 
 int platform_hwversion(void) {
   return 0;
-}
-
-/* This is a transplanted main() from main.c */
-void main_task(void *parameters) {
-  (void) parameters;
-
-  platform_init();
-
-  while (true) {
-
-    volatile struct exception e;
-    TRY_CATCH(e, EXCEPTION_ALL) {
-      gdb_main();
-    }
-    if (e.type) {
-      gdb_putpacketz("EFF");
-      target_list_free();
-      morse("TARGET LOST.", 1);
-    }
-  }
-
-  /* Should never get here */
 }
 
 #define EV_NETNEWDATA 0xFF
@@ -213,15 +194,17 @@ void uart_rx_task(void *parameters) {
   netconn_listen(uart_serv_sock);
 
 
-  DEBUG("Listening on :23\n");
-
-  //uart_add_rx_poll(sem_poll);
+  ESP_LOGI(__func__, "Listening on :23\n");
 
   while (1) {
     int c;
     uart_event_t evt;
 
-    if (xQueueReceive(event_queue, (void*)&evt, 1000) != pdFALSE) {
+    if (xQueueReceive(event_queue, (void*)&evt, 10) != pdFALSE) {
+
+		if(evt.type == UART_FIFO_OVF) {
+			uart_overruns++;
+		}
 
       if (uart_sockerr && uart_client_sock) {
         uart_client_sock->callback = NULL;
@@ -281,7 +264,6 @@ void uart_rx_task(void *parameters) {
 #else
         uart_write_bytes(0, data, len);
 #endif
-
 
         netbuf_delete(nb);
       }
@@ -370,7 +352,11 @@ void wifi_init_softap()
 
         },
     };
-    wifi_config.ap.ssid_len = sprintf((char*)wifi_config.ap.ssid, AP_SSID "_%X", 0);
+
+    uint32_t chipid;
+    esp_read_mac((uint8_t*)&chipid, ESP_MAC_WIFI_SOFTAP);
+
+    wifi_config.ap.ssid_len = sprintf((char*)wifi_config.ap.ssid, AP_SSID "_%X", chipid);
 
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
@@ -401,12 +387,18 @@ void app_main(void) {
   uart_set_baudrate(0, baud);
   uart_set_baudrate(1, baud);
 
-  ESP_ERROR_CHECK(uart_driver_install(0, 1024, 0, 8, &event_queue, 0));
+  ESP_ERROR_CHECK(uart_driver_install(0, 2048, 256, 16, &event_queue, 0));
 
   httpd_start();
 
   xTaskCreate(&main, "bmp_main", 8192, NULL, 2, NULL);
   xTaskCreate(&uart_rx_task, "io_main", 2048, NULL, 2, NULL);
+
+  ota_tftp_init_server(69);
+
+
+  ESP_LOGI(__func__, "Free heap %d\n", esp_get_free_heap_size());
+
 }
 
 #ifndef ENABLE_DEBUG

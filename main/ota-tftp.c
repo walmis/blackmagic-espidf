@@ -80,13 +80,10 @@ const esp_partition_t *running_part;
 
 void ota_tftp_init_server(int listen_port)
 {
-    xTaskCreate(tftp_task, "tftpOTATask", 512, (void *)listen_port, 2, NULL);
+    xTaskCreate(tftp_task, "tftpOTATask", 1500, (void *)listen_port, 2, NULL);
 }
 
-err_t ota_tftp_download(const char *server, int port, const char *filename,
-                        int timeout, int ota_slot, tftp_receive_cb receive_cb)
-{
-
+static int ota_tftp_init() {
 	configured_part = esp_ota_get_boot_partition();
 	running_part = esp_ota_get_running_partition();
 	if(!configured_part || !running_part)
@@ -110,7 +107,7 @@ err_t ota_tftp_download(const char *server, int port, const char *filename,
 		ESP_LOGE(TAG, "update_partition not found!");
 		return ERR_VAL;
 	}
-
+	ESP_LOGI(TAG, "esp_ota_begin");
 	err_t err = esp_ota_begin(update_part, OTA_SIZE_UNKNOWN, &update_handle);
 	if (err != ESP_OK)
 	{
@@ -121,7 +118,17 @@ err_t ota_tftp_download(const char *server, int port, const char *filename,
 	{
 		ESP_LOGI(TAG, "esp_ota_begin succeeded");
 	}
+	return ERR_OK;
+}
 
+err_t ota_tftp_download(const char *server, int port, const char *filename,
+                        int timeout, int ota_slot, tftp_receive_cb receive_cb)
+{
+	err_t err;
+
+	if((err = ota_tftp_init()) < 0) {
+		return ERR_VAL;
+	}
 
     struct netconn *nc = netconn_new (NETCONN_UDP);
     if(!nc) {
@@ -231,6 +238,10 @@ static void tftp_task(void *listen_port)
             netconn_disconnect(nc);
             continue;
         }
+
+        /* init ota system */
+
+        ota_tftp_init();
 
         /* Finished WRQ phase, start TFTP data transfer */
         size_t received_len;
