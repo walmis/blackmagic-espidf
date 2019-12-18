@@ -72,9 +72,9 @@ static err_t tftp_send_rrq(struct netconn *nc, const char *filename);
 static void tftp_send_error(struct netconn *nc, int err_code, const char *err_msg);
 
 esp_ota_handle_t update_handle;
-const esp_partition_t *update_partition;
-const esp_partition_t *configured;
-const esp_partition_t *running;
+const esp_partition_t *update_part;
+const esp_partition_t *configured_part;
+const esp_partition_t *running_part;
 
 #define TAG "ota-tftp"
 
@@ -87,31 +87,31 @@ err_t ota_tftp_download(const char *server, int port, const char *filename,
                         int timeout, int ota_slot, tftp_receive_cb receive_cb)
 {
 
-	configured = esp_ota_get_boot_partition();
-	running = esp_ota_get_running_partition();
-	if(!configured || !running)
+	configured_part = esp_ota_get_boot_partition();
+	running_part = esp_ota_get_running_partition();
+	if(!configured_part || !running_part)
 	{
 		ESP_LOGE(TAG, "configured or running parititon is null, is OTA support enabled in build configuration?");
 		return ERR_VAL;
 	}
 
-	if (configured != running) {
+	if (configured_part != running_part) {
 		ESP_LOGW(TAG, "Configured OTA boot partition at offset 0x%08x, but running from offset 0x%08x",
-			configured->address, running->address);
+			configured_part->address, running_part->address);
 		ESP_LOGW(TAG, "(This can happen if either the OTA boot data or preferred boot image become corrupted somehow.)");
 	}
 	ESP_LOGI(TAG, "Running partition type %d subtype %d (offset 0x%08x)",
-		running->type, running->subtype, running->address);
+		running_part->type, running_part->subtype, running_part->address);
 
-	update_partition = esp_ota_get_next_update_partition(NULL);
+	update_part = esp_ota_get_next_update_partition(NULL);
 
-	if (update_partition == NULL)
+	if (update_part == NULL)
 	{
 		ESP_LOGE(TAG, "update_partition not found!");
 		return ERR_VAL;
 	}
 
-	err_t err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
+	err_t err = esp_ota_begin(update_part, OTA_SIZE_UNKNOWN, &update_handle);
 	if (err != ESP_OK)
 	{
 		ESP_LOGE(TAG, "esp_ota_begin failed, error=%d", err);
@@ -238,19 +238,16 @@ static void tftp_task(void *listen_port)
         int recv_err = tftp_receive_data(nc, &received_len, NULL, 0, NULL);
 
         netconn_disconnect(nc);
-        printf("OTA TFTP receive data result %d bytes %d\r\n", recv_err, received_len);
+        ESP_LOGI(TAG, "OTA TFTP receive data result %d bytes %d\r\n", recv_err, received_len);
         if(recv_err == ERR_OK) {
-			err = esp_ota_set_boot_partition(update_partition);
+			err = esp_ota_set_boot_partition(update_part);
 			if (err != ESP_OK) {
 				ESP_LOGE(TAG, "esp_ota_set_boot_partition failed! err=0x%x", err);
+				continue;
 			}
 
-            vPortEnterCritical();
 			esp_restart();
-//            if(!rboot_set_current_rom(slot)) {
-//                printf("OTA TFTP failed to set new rboot slot\r\n");
-//            }
-//            sdk_system_restart();
+
         }
     }
 }
@@ -365,10 +362,7 @@ static err_t tftp_receive_data(struct netconn *nc, size_t *received_len, ip_addr
         /* One UDP packet can be more than one netbuf segment, so iterate all the
            segments in the netbuf and write them to flash
         */
-        int offset = 0;
         int len = netbuf_len(netbuf);
-
-
 
         bool first_chunk = true;
         do
@@ -387,8 +381,6 @@ static err_t tftp_receive_data(struct netconn *nc, size_t *received_len, ip_addr
 				ESP_LOGE(TAG, "Error: esp_ota_write failed! err=0x%x", err);
 				return ERR_VAL;
 			}
-
-            offset += chunk_len;
 
         } while(netbuf_next(netbuf) >= 0);
 
