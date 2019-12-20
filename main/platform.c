@@ -55,6 +55,7 @@
 #include "nvs_flash.h"
 #include "driver/uart.h"
 #include "driver/gpio.h"
+#include "esp8266/uart_register.h"
 
 #include "ota-tftp.h"
 
@@ -64,7 +65,11 @@
 
 nvs_handle h_nvs_conf;
 
-uint32_t uart_overruns;
+uint32_t uart_overrun_cnt;
+uint32_t uart_errors;
+uint32_t uart_queue_full_cnt;
+uint32_t uart_rx_count;
+uint32_t uart_tx_count;
 
 static struct netconn *uart_client_sock;
 static struct netconn *uart_serv_sock;
@@ -184,7 +189,7 @@ void netconn_cb(struct netconn *nc, enum netconn_evt evt, u16_t len) {
 }
 
 void uart_rx_task(void *parameters) {
-  static uint8_t buf[256];
+  static uint8_t buf[TCP_MSS];
   int bufpos = 0;
 
   uart_serv_sock = netconn_new(NETCONN_TCP);
@@ -202,9 +207,15 @@ void uart_rx_task(void *parameters) {
 
     if (xQueueReceive(event_queue, (void*)&evt, 10) != pdFALSE) {
 
-		if(evt.type == UART_FIFO_OVF) {
-			uart_overruns++;
-		}
+      if(evt.type == UART_FIFO_OVF) {
+        uart_overrun_cnt++;
+      }
+      if(evt.type == UART_FRAME_ERR) {
+        uart_errors++;
+      }
+      if(evt.type == UART_BUFFER_FULL) {
+        uart_queue_full_cnt++;
+      }
 
       if (uart_sockerr && uart_client_sock) {
         uart_client_sock->callback = NULL;
@@ -228,21 +239,18 @@ void uart_rx_task(void *parameters) {
         }
       }
 
-
       size_t rxcount = 0;
-      uart_get_buffered_data_len(0, &rxcount);
-      while (rxcount--) {
-        if (bufpos == sizeof(buf))
-          break;
-        uart_read_bytes(0, &buf[bufpos++], 1, 0);
-      }
+
+      bufpos = uart_read_bytes(0, &buf[bufpos], sizeof(buf)-bufpos, 0);
+
       //DEBUG("uart rx:%d\n", bufpos);
-      if(bufpos) {
+      if(bufpos > 0) {
+        uart_rx_count += 1;
         http_term_broadcast_data(buf, bufpos);
 
         if (uart_client_sock) {
           if (bufpos) {
-        	uart_get_buffered_data_len(0, &rxcount);
+            uart_get_buffered_data_len(0, &rxcount);
             netconn_write(uart_client_sock, buf, bufpos, NETCONN_COPY |
                 (rxcount > 0 ? NETCONN_MORE : 0));
           }
@@ -252,24 +260,22 @@ void uart_rx_task(void *parameters) {
 
       if (uart_client_sock && client_sock_pending_bytes) {
         struct netbuf *nb = 0;
-        netconn_recv(uart_client_sock, &nb);
+        err_t err = netconn_recv(uart_client_sock, &nb);
 
-        char *data = 0;
-        u16_t len = 0;
-        netbuf_data(nb, (void*) &data, &len);
-
-        //fwrite(data, len, 1, stdout);
+        if(err == ERR_OK) {
+          char *data = 0;
+          u16_t len = 0;
+          netbuf_data(nb, (void*) &data, &len);
 #ifdef USE_GPIO2_UART
-        uart_write_bytes(1, data, len);
+          uart_write_bytes(1, data, len);
 #else
-        uart_write_bytes(0, data, len);
+          uart_write_bytes(0, data, len);
+          uart_tx_count += len;
 #endif
-
-        netbuf_delete(nb);
+          netbuf_delete(nb);
+        }
       }
-
     }
-
   }
 }
 
@@ -348,15 +354,15 @@ void wifi_init_softap()
         .ap = {
             .password = AP_PSK,
             .max_connection = 4,
-            .authmode = WIFI_AUTH_WPA_WPA2_PSK
+            .authmode = WIFI_AUTH_WPA2_PSK
 
         },
     };
 
-    uint32_t chipid;
+    uint64_t chipid;
     esp_read_mac((uint8_t*)&chipid, ESP_MAC_WIFI_SOFTAP);
 
-    wifi_config.ap.ssid_len = sprintf((char*)wifi_config.ap.ssid, AP_SSID "_%X", chipid);
+    wifi_config.ap.ssid_len = sprintf((char*)wifi_config.ap.ssid, AP_SSID "_%X", (uint32_t)chipid);
 
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
@@ -367,19 +373,32 @@ void wifi_init_softap()
 extern void main();
 
 
+
+
+int putc_noop(int c) {
+	return 0;
+}
+
+int putc_remote(int c) {
+  return 0;
+}
+
 void app_main(void) {
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
+  esp_log_set_putchar(putc_noop);
 
-    ESP_ERROR_CHECK(nvs_open("config", NVS_READWRITE, &h_nvs_conf));
+  esp_err_t ret = nvs_flash_init();
+  if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    ret = nvs_flash_init();
+  }
+  ESP_ERROR_CHECK(ret);
+
+  ESP_ERROR_CHECK(nvs_open("config", NVS_READWRITE, &h_nvs_conf));
 
 
+  wifi_init_softap();
 
-    wifi_init_softap();
+  esp_log_set_putchar(putc_remote);
 
   uint32_t baud = 230400;
   nvs_get_u32(h_nvs_conf, "uartbaud", &baud);
@@ -387,12 +406,25 @@ void app_main(void) {
   uart_set_baudrate(0, baud);
   uart_set_baudrate(1, baud);
 
-  ESP_ERROR_CHECK(uart_driver_install(0, 2048, 256, 16, &event_queue, 0));
+  esp_wifi_set_ps (WIFI_PS_NONE);
+
+  ESP_ERROR_CHECK(uart_driver_install(0, 4096, 256, 16, &event_queue, 0));
+
+  uart_intr_config_t uart_intr = {
+      .intr_enable_mask = UART_RXFIFO_FULL_INT_ENA_M
+      | UART_RXFIFO_TOUT_INT_ENA_M
+      | UART_FRM_ERR_INT_ENA_M
+      | UART_RXFIFO_OVF_INT_ENA_M,
+      .rxfifo_full_thresh = 80,
+      .rx_timeout_thresh = 2,
+      .txfifo_empty_intr_thresh = 10
+  };
+  uart_intr_config(0, &uart_intr);
 
   httpd_start();
 
   xTaskCreate(&main, "bmp_main", 8192, NULL, 2, NULL);
-  xTaskCreate(&uart_rx_task, "io_main", 2048, NULL, 2, NULL);
+  xTaskCreate(&uart_rx_task, "io_main", 1500, NULL, 3, NULL);
 
   ota_tftp_init_server(69);
 

@@ -73,6 +73,71 @@ CgiStatus cgi_baud(HttpdConnData *connData) {
   return HTTPD_CGI_DONE;
 }
 
+extern uint32_t uart_overrun_cnt;
+extern uint32_t uart_errors;
+extern uint32_t uart_queue_full_cnt;
+extern uint32_t uart_rx_count;
+extern uint32_t uart_tx_count;
+
+CgiStatus cgi_status(HttpdConnData *connData) {
+  int len;
+  char buff[256];
+
+  if (connData->isConnectionClosed) {
+    //Connection aborted. Clean up.
+    return HTTPD_CGI_DONE;
+  }
+
+  uint32_t baud = 0;
+  uart_get_baudrate(0, &baud);
+
+  len = snprintf(buff, sizeof(buff), "{\"free_heap\": %u,\n"
+                                      "\"baud_rate\": %d,\n"
+                                      "\"uart_overruns\": %d\n"
+                                      "\"uart_errors\": %d\n"
+                                      "\"uart_rx_full_cnt\": %d\n"
+                                      "\"uart_rx_count\": %d\n"
+                                      "\"uart_tx_count\": %d\n"
+                                      "\"tasks\": [\n", esp_get_free_heap_size(), baud, uart_overrun_cnt, uart_errors,
+                                      uart_queue_full_cnt, uart_rx_count, uart_tx_count);
+
+
+  httpdStartResponse(connData, 200);
+  httpdHeader(connData, "Cache-Control", "no-store, must-revalidate, no-cache, max-age=0");
+  httpdHeader(connData, "Content-Type", "text/json");
+  httpdEndHeaders(connData);
+
+  httpdSend(connData, buff, len);
+
+
+  int uxArraySize = uxTaskGetNumberOfTasks();
+  TaskStatus_t* pxTaskStatusArray = malloc( uxArraySize * sizeof( TaskStatus_t ) );
+
+  if( pxTaskStatusArray != NULL )
+  {
+    /* Generate the (binary) data. */
+    uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, NULL );
+    for(int i = 0; i < uxArraySize; i++) {
+      TaskStatus_t* tsk = &pxTaskStatusArray[i];
+
+      len = snprintf(buff, sizeof(buff), "\t{\"id\": %lu, \"name\": %s, \"prio\": %lu, \"state\": %d, \"stack_hwm\": %u },\n",
+          tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority, tsk->eCurrentState, tsk->usStackHighWaterMark);
+
+
+      httpdSend(connData, buff, len);
+
+    }
+  }
+
+  free(pxTaskStatusArray);
+
+  len = snprintf(buff, sizeof(buff), "]\n}\n");
+  httpdSend(connData, buff, len);
+
+
+  return HTTPD_CGI_DONE;
+}
+
 #define FLASH_SIZE 2
 #define LIBESPHTTPD_OTA_TAGNAME "blackmagic"
 
@@ -108,6 +173,7 @@ HttpdBuiltInUrl builtInUrls[]={
 //  {"/wifi/connect.cgi", cgiWiFiConnect, NULL},
 //  {"/wifi/connstatus.cgi", cgiWiFiConnStatus, NULL},
   {"/uart/baud", cgi_baud, NULL, 0},
+  {"/status", cgi_status, NULL, 0},
 //
   {"/terminal", cgiWebsocket, (const void*)on_term_connect, 0},
 //  {"/websocket/echo.cgi", cgiWebsocket, myEchoWebsocketConnect},
