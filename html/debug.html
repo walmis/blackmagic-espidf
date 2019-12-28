@@ -1,0 +1,54 @@
+<!doctype html>
+  <html>
+    <head>
+      <link rel="stylesheet" href="xterm.css" />
+      <script src="xterm.js"></script>
+      <script src="xterm-addon-fit.js"></script>
+    </head>
+    <style>
+     body {
+       font-family: sans;
+     }
+    </style>
+    <body>
+      <div id="terminal" style="height: 90vh" ></div>
+      
+      <script>
+        var line_items = [];
+        var idx = -1;
+
+        
+        var term = new Terminal({cursorBlink: true, convertEol: true });
+        var fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        
+        var socket = new WebSocket("ws://192.168.4.1/debugws");
+        socket.onopen = function(e) {
+          term.write("\x1B[1;3;31m[Websocket] Connection established\x1B[0m\r\n");
+        };
+
+        socket.onmessage = function(event) {
+            term.write(event.data);          
+        };
+
+        socket.onclose = function(event) {
+          if (event.wasClean) {
+            term.write("[Websocket] Connection closed");
+          } else {
+            // e.g. server process killed or network down
+            // event.code is usually 1006 in this case
+            term.write("[Websocket] Connection died");
+          }
+        };
+
+        term.open(document.getElementById('terminal'));
+        
+        fitAddon.activate(term)
+        fitAddon.fit()
+        term.focus()
+        
+        window.addEventListener('resize', () => { fitAddon.fit() } );
+        
+      </script>
+    </body>
+  </html>

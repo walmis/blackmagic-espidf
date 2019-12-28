@@ -57,6 +57,8 @@
 #include "driver/gpio.h"
 #include "esp8266/uart_register.h"
 
+#include <lwip/sockets.h>
+
 #include "ota-tftp.h"
 
 #define ACCESS_POINT_MODE
@@ -71,12 +73,13 @@ uint32_t uart_queue_full_cnt;
 uint32_t uart_rx_count;
 uint32_t uart_tx_count;
 
-static struct netconn *uart_client_sock;
-static struct netconn *uart_serv_sock;
-static int uart_sockerr;
-static xQueueHandle event_queue;
-static int client_sock_pending_bytes;
-static int clients_pending;
+int tcp_serv_sock;
+int udp_serv_sock;
+int tcp_client_sock = 0;
+
+static xQueueHandle uart_event_queue;
+static struct sockaddr_in udp_peer_addr;
+static xQueueHandle dbg_msg_queue;
 
 //#define __IOMUX(x) IOMUX_GPIO ## x ##_FUNC_GPIO
 //#define _IOMUX(x)  __IOMUX(x)
@@ -135,77 +138,102 @@ int platform_hwversion(void) {
   return 0;
 }
 
-#define EV_NETNEWDATA 0xFF
-#define EV_NETNEWCONN 0xFE
-#define EV_NETERR 0xFD
+void net_uart_task(void* params) {
 
-void netconn_serv_cb(struct netconn *nc, enum netconn_evt evt, u16_t len) {
-  DEBUG("evt %d len %d\n", evt, len);
+	tcp_serv_sock = socket(AF_INET, SOCK_STREAM, 0);
+	udp_serv_sock = socket(AF_INET, SOCK_DGRAM, 0);
+	tcp_client_sock = 0;
 
-  if (evt == NETCONN_EVT_RCVPLUS)
-  {
-    clients_pending++;
-    uart_event_t evt;
-    evt.type = EV_NETNEWCONN;
-    evt.size = len;
-    xQueueSend(event_queue, (void*)&evt, 0);
+	int ret;
 
-  }
-  if (evt == NETCONN_EVT_RCVMINUS)
-  {
-    clients_pending--;
-  }
-}
+	struct sockaddr_in saddr;
+	saddr.sin_addr.s_addr = 0;
+	saddr.sin_port = ntohs(23);
+	saddr.sin_family = AF_INET;
 
-void netconn_cb(struct netconn *nc, enum netconn_evt evt, u16_t len) {
-  //printf("evt %d len %d\n", evt, len);
+	bind(tcp_serv_sock, (struct sockaddr*)&saddr, sizeof(saddr));
 
-  if (evt == NETCONN_EVT_RCVPLUS) {
-    client_sock_pending_bytes += len;
-    if (len == 0) {
-      uart_sockerr = 1;
-      client_sock_pending_bytes = 0;
-    }
+	saddr.sin_addr.s_addr = 0;
+	saddr.sin_port = ntohs(2323);
+	saddr.sin_family = AF_INET;
+	bind(udp_serv_sock, (struct sockaddr*)&saddr, sizeof(saddr));
+	listen(tcp_serv_sock, 1);
 
-    uart_event_t evt;
-    evt.type = EV_NETNEWDATA;
-    evt.size = len;
-    xQueueSend(event_queue, (void*)&evt, 0);
+	while(1) {
+		fd_set fds;
+		struct timeval tv;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 
-  } else if (evt == NETCONN_EVT_RCVMINUS) {
-    client_sock_pending_bytes -= len;
-  }
+		FD_ZERO(&fds);
+		FD_SET(tcp_serv_sock, &fds);
+		FD_SET(udp_serv_sock, &fds);
+		if(tcp_client_sock)
+			FD_SET(tcp_client_sock, &fds);
 
-  else if (evt == NETCONN_EVT_ERROR) {
-    DEBUG("NETCONN_EVT_ERROR\n");
+		int maxfd = MAX(tcp_serv_sock, MAX(udp_serv_sock, tcp_client_sock));
 
-    uart_sockerr = 1;
-    client_sock_pending_bytes = 0;
-    uart_event_t evt;
-    evt.type = EV_NETERR;
-    evt.size = 0;
-    xQueueSend(event_queue, (void*)&evt, 0);
-  }
+		if((ret = select(maxfd+1, &fds, NULL, NULL, &tv) > 0))
+		{
+			if(FD_ISSET(tcp_serv_sock, &fds)) {
+				tcp_client_sock = accept(tcp_serv_sock, 0, 0);
+				if(tcp_client_sock < 0) {
+					ESP_LOGE(__func__, "accept() failed");
+					tcp_client_sock = 0;
+				} else {
+					ESP_LOGI(__func__, "accepted tcp connection");
+
+					int opt = 1; /* SO_KEEPALIVE */
+			        setsockopt(tcp_client_sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&opt, sizeof(opt));
+			        opt = 3; /* s TCP_KEEPIDLE */
+			        setsockopt(tcp_client_sock, IPPROTO_TCP, TCP_KEEPIDLE, (void*)&opt, sizeof(opt));
+			        opt = 1; /* s TCP_KEEPINTVL */
+			        setsockopt(tcp_client_sock, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&opt, sizeof(opt));
+			        opt = 3; /* TCP_KEEPCNT */
+			        setsockopt(tcp_client_sock, IPPROTO_TCP, TCP_KEEPCNT, (void *)&opt, sizeof(opt));
+			        opt = 1;
+			        setsockopt(tcp_client_sock, IPPROTO_TCP, TCP_NODELAY, (void *)&opt, sizeof(opt));
+
+				}
+			}
+			uint8_t buf[128];
+
+			if(FD_ISSET(udp_serv_sock, &fds)) {
+				socklen_t slen = sizeof(udp_peer_addr);
+				ret = recvfrom(udp_serv_sock, buf, sizeof(buf), 0, (struct sockaddr*)&udp_peer_addr, &slen);
+				if(ret > 0) {
+					uart_tx_chars(0, (const char*)buf, ret);
+					uart_tx_count += ret;
+				} else {
+					ESP_LOGE(__func__, "udp recvfrom() failed");
+				}
+			}
+
+			if(tcp_client_sock && FD_ISSET(tcp_client_sock, &fds)) {
+				ret = recv(tcp_client_sock, buf, sizeof(buf), MSG_DONTWAIT);
+				if(ret > 0) {
+					uart_tx_chars(0, (const char*)buf, ret);
+					uart_tx_count += ret;
+				} else {
+					ESP_LOGE(__func__, "tcp client recv() failed (%s)", strerror(errno));
+					close(tcp_client_sock);
+					tcp_client_sock = 0;
+				}
+			}
+		}
+	}
+
 }
 
 void uart_rx_task(void *parameters) {
   static uint8_t buf[TCP_MSS];
   int bufpos = 0;
-
-  uart_serv_sock = netconn_new(NETCONN_TCP);
-  uart_serv_sock->callback = netconn_serv_cb;
-
-  netconn_bind(uart_serv_sock, IP_ADDR_ANY, 23);
-  netconn_listen(uart_serv_sock);
-
-
-  ESP_LOGI(__func__, "Listening on :23\n");
+  int ret;
 
   while (1) {
-    int c;
     uart_event_t evt;
 
-    if (xQueueReceive(event_queue, (void*)&evt, 10) != pdFALSE) {
+    if (xQueueReceive(uart_event_queue, (void*)&evt, 100)) {
 
       if(evt.type == UART_FIFO_OVF) {
         uart_overrun_cnt++;
@@ -217,66 +245,70 @@ void uart_rx_task(void *parameters) {
         uart_queue_full_cnt++;
       }
 
-      if (uart_sockerr && uart_client_sock) {
-        uart_client_sock->callback = NULL;
-        netconn_delete(uart_client_sock);
-        uart_client_sock = 0;
-        uart_sockerr = 0;
-        DEBUG("Finish telnet connection\n");
-      }
-
-      if (!uart_client_sock && clients_pending) {
-        netconn_accept(uart_serv_sock, &uart_client_sock);
-
-        uart_sockerr = 0;
-        client_sock_pending_bytes = 0;
-
-        if (uart_client_sock) {
-          tcp_nagle_disable(uart_client_sock->pcb.tcp);
-
-          DEBUG("New telnet connection\n");
-          uart_client_sock->callback = netconn_cb;
-        }
-      }
-
-      size_t rxcount = 0;
-
       bufpos = uart_read_bytes(0, &buf[bufpos], sizeof(buf)-bufpos, 0);
 
       //DEBUG("uart rx:%d\n", bufpos);
       if(bufpos > 0) {
-        uart_rx_count += 1;
+        uart_rx_count += bufpos;
         http_term_broadcast_data(buf, bufpos);
 
-        if (uart_client_sock) {
-          if (bufpos) {
-            uart_get_buffered_data_len(0, &rxcount);
-            netconn_write(uart_client_sock, buf, bufpos, NETCONN_COPY |
-                (rxcount > 0 ? NETCONN_MORE : 0));
-          }
-        } // if (uart_client_sock)
+        if (tcp_client_sock) {
+        	ret = send(tcp_client_sock, buf, bufpos, 0);
+        	if(ret < 0) {
+        		ESP_LOGE(__func__, "tcp send() failed (%s)", strerror(errno));
+        		close(tcp_client_sock);
+        		tcp_client_sock = 0;
+        	}
+        }
+
+        if(udp_peer_addr.sin_addr.s_addr) {
+        	ret = sendto(udp_serv_sock, buf, bufpos, MSG_DONTWAIT, (struct sockaddr*)&udp_peer_addr, sizeof(udp_peer_addr));
+        	if(ret < 0) {
+        		ESP_LOGE(__func__, "udp send() failed (%s)", strerror(errno));
+        		udp_peer_addr.sin_addr.s_addr = 0;
+        	}
+        }
+
         bufpos = 0;
       } //if(bufpos)
-
-      if (uart_client_sock && client_sock_pending_bytes) {
-        struct netbuf *nb = 0;
-        err_t err = netconn_recv(uart_client_sock, &nb);
-
-        if(err == ERR_OK) {
-          char *data = 0;
-          u16_t len = 0;
-          netbuf_data(nb, (void*) &data, &len);
-#ifdef USE_GPIO2_UART
-          uart_write_bytes(1, data, len);
-#else
-          uart_write_bytes(0, data, len);
-          uart_tx_count += len;
-#endif
-          netbuf_delete(nb);
-        }
-      }
     }
   }
+}
+
+
+
+void dbg_task(void *parameters) {
+	dbg_msg_queue = xQueueCreate(1024, 1);
+	struct netconn* nc = netconn_new(NETCONN_UDP);
+	ip_addr_t ip;
+	IP_ADDR4(&ip, 192, 168, 4, 255);
+
+	while(1) {
+
+		char tmp;
+		if(xQueuePeek(dbg_msg_queue, &tmp, 10)) {
+			struct netbuf* nb = netbuf_new();
+
+			int waiting = uxQueueMessagesWaiting(dbg_msg_queue);
+			char* mem = netbuf_alloc(nb, waiting);
+
+			while(waiting--) {
+				xQueueReceive(dbg_msg_queue, mem, 0);
+				http_debug_putc(*mem, *mem=='\n' ? 1 : 0);
+				mem++;
+			}
+			netconn_sendto(nc, nb, &ip, 6666);
+
+			netbuf_delete(nb);
+		}
+
+	}
+}
+
+void debug_putc(char c, int flush) {
+	if(dbg_msg_queue) {
+		xQueueSend(dbg_msg_queue, &c, 0);
+	}
 }
 
 void platform_set_baud(uint32_t baud) {
@@ -376,12 +408,17 @@ extern void main();
 
 
 int putc_noop(int c) {
-	return 0;
+	return c;
 }
 
 int putc_remote(int c) {
-  return 0;
+	if(c == '\n')
+		debug_putc('\r', 0);
+
+	debug_putc(c, c=='\n' ? 1 : 0);
+	return c;
 }
+
 
 void app_main(void) {
   esp_log_set_putchar(putc_noop);
@@ -398,6 +435,11 @@ void app_main(void) {
 
   wifi_init_softap();
 
+  //esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G);
+  esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B);
+
+  httpd_start();
+
   esp_log_set_putchar(putc_remote);
 
   uint32_t baud = 230400;
@@ -408,7 +450,7 @@ void app_main(void) {
 
   esp_wifi_set_ps (WIFI_PS_NONE);
 
-  ESP_ERROR_CHECK(uart_driver_install(0, 4096, 256, 16, &event_queue, 0));
+  ESP_ERROR_CHECK(uart_driver_install(0, 4096, 256, 16, &uart_event_queue, 0));
 
   uart_intr_config_t uart_intr = {
       .intr_enable_mask = UART_RXFIFO_FULL_INT_ENA_M
@@ -419,15 +461,16 @@ void app_main(void) {
       .rx_timeout_thresh = 2,
       .txfifo_empty_intr_thresh = 10
   };
+
   uart_intr_config(0, &uart_intr);
 
-  httpd_start();
+  xTaskCreate(&dbg_task, "dbg_main", 1024, NULL, 4, NULL);
+  xTaskCreate(&main, "bmp_main", 8192, NULL, 4, NULL);
 
-  xTaskCreate(&main, "bmp_main", 8192, NULL, 2, NULL);
-  xTaskCreate(&uart_rx_task, "io_main", 1500, NULL, 3, NULL);
+  xTaskCreate(&uart_rx_task, "uart_rx_task", 1200, NULL, 5, NULL);
+  xTaskCreate(&net_uart_task, "net_uart_task", 1200, NULL, 5, NULL);
 
   ota_tftp_init_server(69);
-
 
   ESP_LOGI(__func__, "Free heap %d\n", esp_get_free_heap_size());
 
