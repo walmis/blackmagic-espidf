@@ -37,7 +37,7 @@ typedef void (*tftp_receive_cb)(size_t bytes_received);
  *
  * listen_port is the UDP port number to receive TFTP connections on (default TFTP port is 69)
  */
-void ota_tftp_init_server(int listen_port);
+void ota_tftp_init_server(int listen_port, int prio);
 
 /* Attempt to make a TFTP client connection and download the specified filename.
 

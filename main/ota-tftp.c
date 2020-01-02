@@ -78,9 +78,9 @@ const esp_partition_t *running_part;
 
 #define TAG "ota-tftp"
 
-void ota_tftp_init_server(int listen_port)
+void ota_tftp_init_server(int listen_port, int prio)
 {
-    xTaskCreate(tftp_task, "tftpOTATask", 1500, (void *)listen_port, 2, NULL);
+    xTaskCreate(tftp_task, "tftpOTATask", 1500, (void *)listen_port, prio, NULL);
 }
 
 static int ota_tftp_init() {
@@ -173,12 +173,18 @@ err_t ota_tftp_download(const char *server, int port, const char *filename,
 static void tftp_task(void *listen_port)
 {
     struct netconn *nc = netconn_new (NETCONN_UDP);
+    //int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if(!nc) {
         printf("OTA TFTP: Failed to allocate socket.\r\n");
         return;
     }
 
+    struct sockaddr_in addr;
+    addr.sin_addr.s_addr = 0;
+    addr.sin_family = AF_INET;
+    addr.sin_port = ntohs((int)listen_port);
     netconn_bind(nc, IP_ADDR_ANY, (int)listen_port);
+    //bind(sock, (struct socaddr*)&addr, sizeof(addr));
 
     /* We expect a WRQ packet with filename "firmware.bin" and "octet" mode,
     */
@@ -189,19 +195,19 @@ static void tftp_task(void *listen_port)
         struct netbuf *netbuf;
         err_t err = netconn_recv(nc, &netbuf);
         if(err != ERR_OK) {
-            printf("OTA TFTP Error: Failed to receive TFTP initial packet. err=%d\r\n", err);
+        	ESP_LOGE(__func__, "OTA TFTP Error: Failed to receive TFTP initial packet. err=%d\r\n", err);
             continue;
         }
         uint16_t len = netbuf_len(netbuf);
         if(len < 6) {
-            printf("OTA TFTP Error: Packet too short for a valid WRQ\r\n");
+        	ESP_LOGE(__func__, "OTA TFTP Error: Packet too short for a valid WRQ\r\n");
             netbuf_delete(netbuf);
             continue;
         }
 
         uint16_t opcode = netbuf_read_u16_n(netbuf, 0);
         if(opcode != TFTP_OP_WRQ) {
-            printf("OTA TFTP Error: Invalid opcode 0x%04x didn't match WRQ\r\n", opcode);
+        	ESP_LOGE(__func__, "OTA TFTP Error: Invalid opcode 0x%04x didn't match WRQ\r\n", opcode);
             netbuf_delete(netbuf);
             continue;
         }
@@ -234,7 +240,7 @@ static void tftp_task(void *listen_port)
         /* ACK the WRQ */
         int ack_err = tftp_send_ack(nc, 0);
         if(ack_err != 0) {
-            printf("OTA TFTP initial ACK failed\r\n");
+            ESP_LOGE(__func__, "OTA TFTP initial ACK failed\r\n");
             netconn_disconnect(nc);
             continue;
         }

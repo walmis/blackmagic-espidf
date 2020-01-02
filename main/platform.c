@@ -279,9 +279,9 @@ void uart_rx_task(void *parameters) {
 
 void dbg_task(void *parameters) {
 	dbg_msg_queue = xQueueCreate(1024, 1);
-	struct netconn* nc = netconn_new(NETCONN_UDP);
-	ip_addr_t ip;
-	IP_ADDR4(&ip, 192, 168, 4, 255);
+	//struct netconn* nc = netconn_new(NETCONN_UDP);
+	//ip_addr_t ip;
+	//IP_ADDR4(&ip, 192, 168, 4, 255);
 
 	while(1) {
 
@@ -297,7 +297,7 @@ void dbg_task(void *parameters) {
 				http_debug_putc(*mem, *mem=='\n' ? 1 : 0);
 				mem++;
 			}
-			netconn_sendto(nc, nb, &ip, 6666);
+			//netconn_sendto(nc, nb, &ip, 6666);
 
 			netbuf_delete(nb);
 		}
@@ -386,7 +386,8 @@ void wifi_init_softap()
         .ap = {
             .password = AP_PSK,
             .max_connection = 4,
-            .authmode = WIFI_AUTH_WPA2_PSK
+            .authmode = WIFI_AUTH_WPA2_PSK,
+			.channel = 11
 
         },
     };
@@ -435,8 +436,8 @@ void app_main(void) {
 
   wifi_init_softap();
 
-  //esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G);
-  esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B);
+  esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G);
+  //esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B);
 
   httpd_start();
 
@@ -465,12 +466,12 @@ void app_main(void) {
   uart_intr_config(0, &uart_intr);
 
   xTaskCreate(&dbg_task, "dbg_main", 1024, NULL, 4, NULL);
-  xTaskCreate(&main, "bmp_main", 8192, NULL, 4, NULL);
+  xTaskCreate(&main, "bmp_main", 8192, NULL, 1, NULL);
 
   xTaskCreate(&uart_rx_task, "uart_rx_task", 1200, NULL, 5, NULL);
   xTaskCreate(&net_uart_task, "net_uart_task", 1200, NULL, 5, NULL);
 
-  ota_tftp_init_server(69);
+  ota_tftp_init_server(69, 4);
 
   ESP_LOGI(__func__, "Free heap %d\n", esp_get_free_heap_size());
 
