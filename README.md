@@ -24,8 +24,11 @@ By disabling OTA it should work on 1MB devices.
 ## GPIO defaults for esp8266
 
 GPIO0 - SWDIO
+
 GPIO2 - SWCLK
+
 TX0 - UART TXD
+
 RX0  - UART RXD
 
 ## Serial terminal
