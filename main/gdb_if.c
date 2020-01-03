@@ -108,6 +108,8 @@ unsigned char gdb_if_getchar_to(int timeout)
 		if(FD_ISSET(gdb_if_serv, &fds)) {
 			if(gdb_if_conn <= 0) {
 				gdb_if_conn = accept(gdb_if_serv, NULL, NULL);
+				int opt = 1;
+				setsockopt(gdb_if_conn, IPPROTO_TCP, TCP_NODELAY, (void*)&opt, sizeof(opt));
 				ESP_LOGI(__func__, "Got connection\n");
 			}
 		}
