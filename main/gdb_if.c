@@ -41,11 +41,6 @@ static int gdb_if_serv, gdb_if_conn;
 static int gdb_if_udp;
 static struct sockaddr_in udp_peer;
 
-uint8_t rxbuf[256];
-uint8_t rxhead;
-uint8_t rxtail;
-
-
 int gdb_if_init(void)
 {
 	struct sockaddr_in addr;

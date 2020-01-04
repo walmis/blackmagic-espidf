@@ -131,7 +131,7 @@ CgiStatus cgi_status(HttpdConnData *connData) {
     for(int i = 0; i < uxArraySize; i++) {
       TaskStatus_t* tsk = &pxTaskStatusArray[i];
 
-      len = snprintf(buff, sizeof(buff), "\t{\"id\": %lu, \"name\": %s, \"prio\": %lu, \"state\": %d, \"stack_hwm\": %u, \"cpu\": \"%d%%\" },\n",
+      len = snprintf(buff, sizeof(buff), "\t{\"id\": %u, \"name\": %s, \"prio\": %u, \"state\": %d, \"stack_hwm\": %u, \"cpu\": \"%d%%\" },\n",
           tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority, tsk->eCurrentState, tsk->usStackHighWaterMark, tsk->ulRunTimeCounter / total_runtime);
 
 

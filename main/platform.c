@@ -61,10 +61,6 @@
 
 #include "ota-tftp.h"
 
-#define ACCESS_POINT_MODE
-#define AP_SSID	 "blackmagic"
-#define AP_PSK	 "helloworld"
-
 nvs_handle h_nvs_conf;
 
 uint32_t uart_overrun_cnt;
@@ -109,11 +105,17 @@ void platform_buffer_flush(void) {
 }
 
 void platform_srst_set_val(bool assert) {
-  (void) assert;
+  if(assert) {
+    gpio_set_direction(CONFIG_SRST_GPIO, GPIO_OUTPUT);
+    gpio_set_level(CONFIG_SRST_GPIO, 0);
+  } else {
+    gpio_set_level(CONFIG_SRST_GPIO, 1);
+    gpio_set_direction(CONFIG_SRST_GPIO, GPIO_INPUT);
+  }
 }
 
 bool platform_srst_get_val(void) {
-  return false;
+  return !gpio_get_level(CONFIG_SRST_GPIO);
 }
 
 const char*
@@ -373,6 +375,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
 }
 
+#if CONFIG_ESP_WIFI_MODE_AP
 void wifi_init_softap()
 {
     //wifi_event_group = xEventGroupCreate();
@@ -384,8 +387,8 @@ void wifi_init_softap()
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     wifi_config_t wifi_config = {
         .ap = {
-            .password = AP_PSK,
-            .max_connection = 4,
+            .password = CONFIG_ESP_WIFI_PASSWORD,
+            .max_connection = CONFIG_MAX_STA_CONN,
             .authmode = WIFI_AUTH_WPA2_PSK,
 			.channel = 11
 
@@ -395,18 +398,43 @@ void wifi_init_softap()
     uint64_t chipid;
     esp_read_mac((uint8_t*)&chipid, ESP_MAC_WIFI_SOFTAP);
 
-    wifi_config.ap.ssid_len = sprintf((char*)wifi_config.ap.ssid, AP_SSID "_%X", (uint32_t)chipid);
-
+    if(strcmp(CONFIG_ESP_WIFI_SSID, "auto") == 0) {
+        wifi_config.ap.ssid_len = sprintf((char*)wifi_config.ap.ssid, "blackmagic_%X", (uint32_t)chipid);
+    } else {
+        wifi_config.ap.ssid_len = sprintf((char*)wifi_config.ap.ssid, CONFIG_ESP_WIFI_SSID);
+    }
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
 }
+#endif
+#if CONFIG_ESP_WIFI_MODE_STA
+void wifi_init_sta()
+{
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = CONFIG_ESP_WIFI_SSID,
+            .password = CONFIG_ESP_WIFI_PASSWORD
+        },
+    };
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
+    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
+
+    ESP_ERROR_CHECK(esp_wifi_start() );
+
+    ESP_LOGI(__func__, "wifi_init_sta finished.");
+
+}
+#endif
+
+//defined in blackmagic component
 extern void main();
-
-
-
 
 int putc_noop(int c) {
 	return c;
@@ -433,8 +461,11 @@ void app_main(void) {
 
   ESP_ERROR_CHECK(nvs_open("config", NVS_READWRITE, &h_nvs_conf));
 
-
+#if CONFIG_ESP_WIFI_MODE_STA
+  wifi_init_sta();
+#else
   wifi_init_softap();
+#endif
 
   esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G);
   //esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B);
