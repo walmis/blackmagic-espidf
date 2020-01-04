@@ -204,7 +204,7 @@ void net_uart_task(void* params) {
 				socklen_t slen = sizeof(udp_peer_addr);
 				ret = recvfrom(udp_serv_sock, buf, sizeof(buf), 0, (struct sockaddr*)&udp_peer_addr, &slen);
 				if(ret > 0) {
-					uart_tx_chars(0, (const char*)buf, ret);
+					uart_write_bytes(0, (const char*)buf, ret);
 					uart_tx_count += ret;
 				} else {
 					ESP_LOGE(__func__, "udp recvfrom() failed");
@@ -214,7 +214,7 @@ void net_uart_task(void* params) {
 			if(tcp_client_sock && FD_ISSET(tcp_client_sock, &fds)) {
 				ret = recv(tcp_client_sock, buf, sizeof(buf), MSG_DONTWAIT);
 				if(ret > 0) {
-					uart_tx_chars(0, (const char*)buf, ret);
+					uart_write_bytes(0, (const char*)buf, ret);
 					uart_tx_count += ret;
 				} else {
 					ESP_LOGE(__func__, "tcp client recv() failed (%s)", strerror(errno));
