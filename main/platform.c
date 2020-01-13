@@ -77,9 +77,13 @@ static xQueueHandle uart_event_queue;
 static struct sockaddr_in udp_peer_addr;
 static xQueueHandle dbg_msg_queue;
 
-//#define __IOMUX(x) IOMUX_GPIO ## x ##_FUNC_GPIO
-//#define _IOMUX(x)  __IOMUX(x)
-
+#define IS_GPIO_USED(x) \
+    CONFIG_TMS_SWDIO_GPIO==x || \
+    CONFIG_TCK_SWCLK_GPIO==x || \
+    CONFIG_TDI_GPIO==x || \
+    CONFIG_TDO_GPIO==x || \
+    CONFIG_SRST_GPIO==x
+    
 void platform_init() {
 #ifdef USE_GPIO2_UART
   PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_UART1_TXD_BK);
@@ -87,12 +91,12 @@ void platform_init() {
   PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_GPIO2);
 #endif
 
-  //gpio_set_iomux_function(SWDIO_PIN, _IOMUX(SWDIO_PIN));
-  //gpio_set_iomux_function(SWCLK_PIN, _IOMUX(SWCLK_PIN));
+#if IS_GPIO_USED(1)
+    PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_GPIO1);
+#endif
 
   gpio_clear(_, SWCLK_PIN);
   gpio_clear(_, SWDIO_PIN);
-
 
   gpio_enable(SWCLK_PIN, GPIO_OUTPUT);
   gpio_enable(SWDIO_PIN, GPIO_OUTPUT);

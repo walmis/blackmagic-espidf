@@ -43,19 +43,12 @@ void platform_set_baud(uint32_t baud);
 #include "timing.h"
 #include "driver/gpio.h"
 
-
 #define TMS_SET_MODE() do { } while (0)
 
-#ifdef USE_GPIO2_UART
-#define TMS_PIN 1
-#define TCK_PIN 0 //
-#else
 // no-connects on ESP-01: 12,13,14,15
 #define TMS_PIN CONFIG_TMS_SWDIO_GPIO
-#define TCK_PIN CONFIG_TCK_SWCLK_GPIO //
-// 2 is GPIO2, broken out
-// 3 is RXD
-#endif
+#define TCK_PIN CONFIG_TCK_SWCLK_GPIO
+
 
 #define TDI_PIN CONFIG_TDI_GPIO // "
 #define TDO_PIN CONFIG_TDO_GPIO // "
