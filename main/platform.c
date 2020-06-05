@@ -414,7 +414,7 @@ void wifi_init_softap()
 
 }
 #endif
-#if CONFIG_ESP_WIFI_MODE_STA
+#if CONFIG_ESP_WIFI_IS_STATION
 void wifi_init_sta()
 {
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -465,7 +465,7 @@ void app_main(void) {
 
   ESP_ERROR_CHECK(nvs_open("config", NVS_READWRITE, &h_nvs_conf));
 
-#if CONFIG_ESP_WIFI_MODE_STA
+#if CONFIG_ESP_WIFI_IS_STATION
   wifi_init_sta();
 #else
   wifi_init_softap();
