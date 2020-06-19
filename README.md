@@ -60,4 +60,11 @@ If the firmware is already on the esp8266 device, it is possible to flash using 
 ```bash
 make tftpflash
 ```
+## STA Fix:
+
+Applay in main/platform.c
+
+ Minus  #if CONFIG_ESP_WIFI_MODE_STA  
+ Plus    #if CONFIG_ESP_WIFI_IS_STATION  
+at 417 and 468 for foxing STA mode  
 
