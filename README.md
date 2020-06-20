@@ -73,3 +73,6 @@ Applayed in main/platform.c
 ```
 at 417 and 468 for fixing STA mode.
 
+Can compilling and downloading but crashing all time.
+
+AP mode works OK.
