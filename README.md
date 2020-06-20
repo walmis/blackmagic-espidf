@@ -64,7 +64,9 @@ make tftpflash
 
 Applay in main/platform.c
 
- Minus  #if CONFIG_ESP_WIFI_MODE_STA  
- Plus    #if CONFIG_ESP_WIFI_IS_STATION  
+```bash
+- #if CONFIG_ESP_WIFI_MODE_STA  
++ #if CONFIG_ESP_WIFI_IS_STATION 
+```
 at 417 and 468 for foxing STA mode  
 
