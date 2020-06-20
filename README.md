@@ -71,5 +71,5 @@ Applay in main/platform.c
 - #if CONFIG_ESP_WIFI_MODE_STA  
 + #if CONFIG_ESP_WIFI_IS_STATION 
 ```
-at 417 and 468 for foxing STA mode  
+at 417 and 468 for fixing STA mode .
 
