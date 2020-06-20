@@ -21,15 +21,18 @@ esp8266 module with >= 2MB flash. Default configuration is set for 4MB flash for
 
 By disabling OTA it should work on 1MB devices.
 
-## GPIO defaults for esp8266
+## Default ESP8266 GIPO pins:
 
-GPIO0 - SWDIO
+| GIPO | WeMos | JTAG | SWD | ARM 10 pin |
+|------|-------|------|-----|------------|
+| GPIO=0 | D3 | TMS | SWDIO | 2 |
+| GPIO=2 | D4 | TCK | SWCLK | 4 |
+| GPIO=14 | D5 | TDO | SWO | 6 |
+| GPIO=13 | D7 | TDI | - | 8 |
+| GPIO=12 | 63 | nRESET | - | 10 |
+| GPIO=1 | TX | - | - | - |
+| GPIO=3 | RX | - | - | - |
 
-GPIO2 - SWCLK
-
-TX0 - UART TXD
-
-RX0  - UART RXD
 
 ## Serial terminal
 
