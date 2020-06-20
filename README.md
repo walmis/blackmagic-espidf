@@ -76,3 +76,7 @@ at 417 and 468 for fixing STA mode.
 Can compilling and downloading but crashing all time.
 
 AP mode works OK.
+
+
+## Binaries:
+Instruction and download at [Visualmicro](https://www.visualmicro.com/page/Create-a-WiFi-Black-Magic-GDB-Probe-from-ESP8266.aspx)
