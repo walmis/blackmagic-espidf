@@ -1,0 +1,870 @@
+Archive member included to satisfy reference by file (symbol)
+
+C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+                              (call_start_cpu)
+C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+                              C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o) (bootloader_utility_load_partition_table)
+C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+                              C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o) (bootloader_init)
+C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+                              C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o) (bootloader_mmap)
+C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+                              C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o) (esp_image_load)
+C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+                              C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o) (esp_partition_table_basic_verify)
+C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+                              C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o) (bootloader_common_ota_select_valid)
+C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                              C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o) (g_rom_flashchip)
+C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                              C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o) (spi_flash_get_id_raw)
+C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+                              C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o) (esp_log_early_timestamp)
+C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+                              C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o) (ets_vprintf)
+C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+                              C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o) (crc32_le)
+C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(phy.o)
+                              C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o) (phy_reg_default)
+C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(uart.o)
+                              C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o) (uart_div_modify)
+
+Allocating common symbols
+Common symbol       size              file
+
+esp_image_spi_freq_t
+                    0x4               C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+
+Discarded input sections
+
+ .text          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+ .data          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+ .bss           0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+ .xt.lit        0x00000000        0x8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+ .xt.prop       0x00000000       0x3c C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+ COMMON         0x00000000        0x4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+ .text          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .data          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .bss           0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .xt.lit        0x00000000       0x28 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .xt.prop       0x00000000      0x3a8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .text          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+ .data          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+ .bss           0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+ .xt.lit        0x00000000        0x8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+ .xt.prop       0x00000000       0x48 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+ .literal.bootloader_flash_write
+                0x00000000        0xc C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .literal.bootloader_flash_erase_sector
+                0x00000000        0x4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .text          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .data          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .bss           0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .text.bootloader_flash_write
+                0x00000000       0x5f C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .text.bootloader_flash_erase_sector
+                0x00000000       0x15 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .xt.lit        0x00000000       0x28 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .xt.prop       0x00000000      0x150 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .literal.esp_image_verify_bootloader
+                0x00000000        0x8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .text          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .data          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .bss           0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .text.esp_image_verify_bootloader
+                0x00000000       0x48 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .xt.lit        0x00000000       0x10 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .xt.prop       0x00000000      0x1a4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .text          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+ .data          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+ .bss           0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+ .xt.lit        0x00000000        0x8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+ .xt.prop       0x00000000       0x84 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+ .literal.bootloader_common_check_long_hold_gpio
+                0x00000000       0x58 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .text          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .data          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .bss           0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .text.bootloader_common_check_long_hold_gpio
+                0x00000000      0x199 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .xt.lit        0x00000000       0x18 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .xt.prop       0x00000000       0xf0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .literal.spi_flash_program
+                0x00000000       0x1c C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .literal.__spi_flash_read
+                0x00000000       0x10 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .literal.spi_flash_read$part$2
+                0x00000000       0x20 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .literal.spi_flash_write_status
+                0x00000000        0xc C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .literal.spi_flash_check_wr_protect
+                0x00000000       0x38 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .literal.spi_flash_erase_sector
+                0x00000000       0x18 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .literal.spi_flash_read
+                0x00000000        0x8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .literal.spi_flash_write
+                0x00000000       0x40 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .literal.spi_flash_erase_range
+                0x00000000       0x10 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .literal.spi_flash_cache2phys
+                0x00000000       0x14 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .literal.spi_flash_get_chip_size
+                0x00000000        0x4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .text          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .data          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .bss           0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .text.spi_flash_program
+                0x00000000       0xb8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .text.__spi_flash_read
+                0x00000000       0x36 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .text.spi_flash_read$part$2
+                0x00000000       0xdc C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .text.spi_flash_write_status
+                0x00000000       0x2a C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .text.spi_flash_check_wr_protect
+                0x00000000       0xf7 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .text.spi_flash_erase_sector
+                0x00000000       0x56 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .text.spi_flash_read
+                0x00000000       0x20 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .text.spi_flash_write
+                0x00000000      0x1a4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .text.spi_flash_erase_range
+                0x00000000       0x57 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .text.spi_flash_cache2phys
+                0x00000000       0x40 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .text.spi_flash_get_chip_size
+                0x00000000        0x7 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .xt.lit        0x00000000       0xb0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .xt.prop       0x00000000      0x840 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .literal.spi_flash_write_status_raw
+                0x00000000       0x1c C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .literal.spi_flash_erase_sector_raw
+                0x00000000       0x14 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .literal.spi_flash_write_raw
+                0x00000000        0xc C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .literal.spi_flash_read_raw
+                0x00000000        0xc C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .text          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .data          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .bss           0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .text.spi_flash_write_status_raw
+                0x00000000       0x57 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .text.spi_flash_erase_sector_raw
+                0x00000000       0x52 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .text.spi_flash_write_raw
+                0x00000000       0x33 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .text.spi_flash_read_raw
+                0x00000000       0x33 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .xt.lit        0x00000000       0x58 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .xt.prop       0x00000000      0x354 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .iram1.0.literal
+                0x00000000        0x8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .iram1.1.literal
+                0x00000000       0x30 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .text          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .data          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .bss           0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .iram1.0       0x00000000       0x18 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .rodata.str1.1
+                0x00000000       0x1c C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .iram1.1       0x00000000       0x95 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .rodata.s_log_prefix
+                0x00000000        0x6 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .rodata.s_log_color
+                0x00000000       0x18 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .xt.lit        0x00000000       0x10 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .xt.prop       0x00000000       0x90 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .literal.ets_putc
+                0x00000000        0x8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .literal.ets_vprintf
+                0x00000000        0x8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .literal.ets_printf
+                0x00000000        0x4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .text          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .data          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .bss           0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .text.ets_putc
+                0x00000000       0x3b C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .text.ets_vprintf
+                0x00000000       0x1f C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .text.ets_printf
+                0x00000000       0x2b C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .xt.lit        0x00000000       0x18 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .xt.prop       0x00000000       0xa8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .literal.crc16_le
+                0x00000000        0x4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ .literal.esp_crc8
+                0x00000000        0x4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ .text          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ .data          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ .bss           0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ .text.crc16_le
+                0x00000000       0x34 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ .text.esp_crc8
+                0x00000000       0x1e C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ .rodata.crc8_le_table
+                0x00000000      0x100 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ .rodata.crc16_le_table
+                0x00000000      0x200 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ .xt.lit        0x00000000       0x18 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ .xt.prop       0x00000000       0xf0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ .literal.phy_reg_default
+                0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(phy.o)
+ .text          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(phy.o)
+ .data          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(phy.o)
+ .bss           0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(phy.o)
+ .xt.lit        0x00000000        0x8 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(phy.o)
+ .xt.prop       0x00000000       0x48 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(phy.o)
+ .literal.uart_buff_switch
+                0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(uart.o)
+ .literal.uart_div_modify
+                0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(uart.o)
+ .literal.Uart_Init
+                0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(uart.o)
+ .text          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(uart.o)
+ .data          0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(uart.o)
+ .bss           0x00000000        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(uart.o)
+ .text.uart_buff_switch
+                0x00000000        0x2 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(uart.o)
+ .text.Uart_Init
+                0x00000000        0x2 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(uart.o)
+ .xt.lit        0x00000000        0x8 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(uart.o)
+ .xt.prop       0x00000000       0x78 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(uart.o)
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+dport0_seg       0x3ff00000         0x00000010
+dram_seg         0x3ffe8000         0x00017c00
+iram_seg         0x40100000         0x00008000
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+START GROUP
+LOAD C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a
+LOAD C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a
+LOAD C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a
+LOAD C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a
+LOAD C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a
+LOAD C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a
+LOAD C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a
+LOAD C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libgcc.a
+LOAD c:/msys32/mingw32/bin/../xtensa-lx106-elf/sysroot/lib\libstdc++.a
+LOAD c:/msys32/mingw32/bin/../lib/gcc/xtensa-lx106-elf/5.2.0\libgcov.a
+END GROUP
+
+.text           0x40100000     0x11a8
+                0x40100000                _stext = .
+                0x40100000                _text_start = ABSOLUTE (.)
+                0x40100000                . = ALIGN (0x10)
+ *(.entry.text)
+ *(.init.literal)
+ *(.init)
+ *(.literal .text .literal.* .text.* .stub .gnu.warning .gnu.linkonce.literal.* .gnu.linkonce.t.*.literal .gnu.linkonce.t.*)
+ .literal.call_start_cpu
+                0x40100000        0x4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+                                 0x18 (size before relaxing)
+ .literal.try_load_partition
+                0x40100004        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+                                  0x4 (size before relaxing)
+ .literal.bootloader_utility_load_partition_table
+                0x40100004       0x10 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+                                 0x1c (size before relaxing)
+ .literal.bootloader_utility_get_selected_boot_partition
+                0x40100014        0x8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+                                 0x28 (size before relaxing)
+ .literal.bootloader_utility_load_boot_image
+                0x4010001c        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+                                 0x1c (size before relaxing)
+ .literal.bootloader_utility_load_image
+                0x4010001c       0x10 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .literal.bootloader_init
+                0x4010002c        0xc C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+                                 0x20 (size before relaxing)
+ .literal.bootloader_mmap
+                0x40100038        0x8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+                                 0x1c (size before relaxing)
+ .literal.bootloader_munmap
+                0x40100040        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+                                  0x8 (size before relaxing)
+ .literal.bootloader_flash_read
+                0x40100040        0x4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .literal.esp_image_load
+                0x40100044        0xc C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+                                 0x28 (size before relaxing)
+ .literal.esp_partition_table_basic_verify
+                0x40100050        0xc C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+                                 0x10 (size before relaxing)
+ .literal.bootloader_common_ota_select_crc
+                0x4010005c        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+                                  0x4 (size before relaxing)
+ .literal.bootloader_common_ota_select_valid
+                0x4010005c        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+                                  0x4 (size before relaxing)
+ .literal.spi_user_cmd
+                0x4010005c        0x4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                  0xc (size before relaxing)
+ .literal.special_flash_read_status
+                0x40100060        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                  0x4 (size before relaxing)
+ .literal.special_flash_write_status
+                0x40100060        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                  0x4 (size before relaxing)
+ .literal.en25q16x_read_sfdp
+                0x40100060        0x4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                  0x8 (size before relaxing)
+ .literal.spi_flash_get_id
+                0x40100064        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                  0xc (size before relaxing)
+ .literal.spi_flash_read_status
+                0x40100064        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                  0xc (size before relaxing)
+ .literal.spi_flash_issi_enable_QIO_mode
+                0x40100064        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                  0xc (size before relaxing)
+ .literal.special_flash_set_mode
+                0x40100064        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                  0x4 (size before relaxing)
+ .literal.en25q16x_write_volatile_status
+                0x40100064        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                 0x14 (size before relaxing)
+ .literal.user_spi_flash_dio_to_qio_pre_init
+                0x40100064        0xc C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                 0x34 (size before relaxing)
+ .literal.esp_spi_flash_init
+                0x40100070       0x18 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                 0x1c (size before relaxing)
+ .literal.Cache_Read_Disable_2
+                0x40100088        0xc C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                                 0x10 (size before relaxing)
+ .literal.Cache_Read_Enable_2
+                0x40100094        0x4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                                  0xc (size before relaxing)
+ .literal.spi_flash_get_id_raw
+                0x40100098       0x10 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                                 0x1c (size before relaxing)
+ .literal.spi_flash_read_status_raw
+                0x401000a8        0x4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                                  0xc (size before relaxing)
+ .literal.spi_flash_enable_qmode_raw
+                0x401000ac        0x4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                                 0x10 (size before relaxing)
+ .literal.spi_user_cmd_raw
+                0x401000b0       0x64 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                                 0x8c (size before relaxing)
+ .literal.spi_flash_switch_to_qio_raw
+                0x40100114        0x8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                                  0xc (size before relaxing)
+ .literal.crc32_le
+                0x4010011c        0x4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ .text.call_start_cpu
+                0x40100120       0x5e C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+                                 0x6e (size before relaxing)
+                0x40100120                call_start_cpu
+ *fill*         0x4010017e        0x2 
+ .text.try_load_partition
+                0x40100180       0x2d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ *fill*         0x401001ad        0x3 
+ .text.bootloader_utility_load_partition_table
+                0x401001b0       0xda C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+                0x401001b0                bootloader_utility_load_partition_table
+ *fill*         0x4010028a        0x2 
+ .text.bootloader_utility_get_selected_boot_partition
+                0x4010028c       0xc6 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+                                 0xce (size before relaxing)
+                0x4010028c                bootloader_utility_get_selected_boot_partition
+ *fill*         0x40100352        0x2 
+ .text.bootloader_utility_load_boot_image
+                0x40100354       0xaf C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+                                 0xb7 (size before relaxing)
+                0x40100354                bootloader_utility_load_boot_image
+ *fill*         0x40100403        0x1 
+ .text.bootloader_utility_load_image
+                0x40100404       0x55 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+                0x40100404                bootloader_utility_load_image
+ *fill*         0x40100459        0x3 
+ .text.bootloader_init
+                0x4010045c       0x5e C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+                                 0x6a (size before relaxing)
+                0x4010045c                bootloader_init
+ *fill*         0x401004ba        0x2 
+ .text.bootloader_mmap
+                0x401004bc       0x5d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+                0x401004bc                bootloader_mmap
+ *fill*         0x40100519        0x3 
+ .text.bootloader_munmap
+                0x4010051c       0x23 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+                0x4010051c                bootloader_munmap
+ *fill*         0x4010053f        0x1 
+ .text.bootloader_flash_read
+                0x40100540       0x2d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+                0x40100540                bootloader_flash_read
+ *fill*         0x4010056d        0x3 
+ .text.esp_image_load
+                0x40100570      0x1c6 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+                                0x1ce (size before relaxing)
+                0x40100570                esp_image_load
+ *fill*         0x40100736        0x2 
+ .text.esp_partition_table_basic_verify
+                0x40100738       0x8b C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+                0x40100738                esp_partition_table_basic_verify
+ *fill*         0x401007c3        0x1 
+ .text.bootloader_common_ota_select_crc
+                0x401007c4       0x18 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+                0x401007c4                bootloader_common_ota_select_crc
+ .text.bootloader_common_ota_select_valid
+                0x401007dc       0x2d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+                0x401007dc                bootloader_common_ota_select_valid
+ *fill*         0x40100809        0x3 
+ .text.spi_user_cmd
+                0x4010080c       0x43 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                0x4010080c                spi_user_cmd
+ *fill*         0x4010084f        0x1 
+ .text.special_flash_read_status
+                0x40100850       0x35 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                0x40100850                special_flash_read_status
+ *fill*         0x40100885        0x3 
+ .text.special_flash_write_status
+                0x40100888       0x4d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                0x40100888                special_flash_write_status
+ *fill*         0x401008d5        0x3 
+ .text.en25q16x_read_sfdp
+                0x401008d8       0x43 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                0x401008d8                en25q16x_read_sfdp
+ *fill*         0x4010091b        0x1 
+ .text.spi_flash_get_id
+                0x4010091c       0x26 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                0x4010091c                spi_flash_get_id
+ *fill*         0x40100942        0x2 
+ .text.spi_flash_read_status
+                0x40100944       0x28 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                0x40100944                spi_flash_read_status
+ .text.spi_flash_issi_enable_QIO_mode
+                0x4010096c       0x3b C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                 0x43 (size before relaxing)
+ *fill*         0x401009a7        0x1 
+ .text.special_flash_set_mode
+                0x401009a8       0x3d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                0x401009a8                special_flash_set_mode
+ *fill*         0x401009e5        0x3 
+ .text.en25q16x_write_volatile_status
+                0x401009e8       0x4f C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                 0x5b (size before relaxing)
+                0x401009e8                en25q16x_write_volatile_status
+ *fill*         0x40100a37        0x1 
+ .text.user_spi_flash_dio_to_qio_pre_init
+                0x40100a38       0xc1 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                 0xd5 (size before relaxing)
+                0x40100a38                user_spi_flash_dio_to_qio_pre_init
+ *fill*         0x40100af9        0x3 
+ .text.esp_spi_flash_init
+                0x40100afc       0xb1 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                0x40100afc                esp_spi_flash_init
+ *fill*         0x40100bad        0x3 
+ .text.Cache_Read_Disable_2
+                0x40100bb0       0x35 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                0x40100bb0                Cache_Read_Disable_2
+ *fill*         0x40100be5        0x3 
+ .text.Cache_Read_Enable_2
+                0x40100be8       0x28 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                0x40100be8                Cache_Read_Enable_2
+                0x40100be8                Cache_Read_Enable_New
+ .text.spi_flash_get_id_raw
+                0x40100c10       0x4f C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                0x40100c10                spi_flash_get_id_raw
+ *fill*         0x40100c5f        0x1 
+ .text.spi_flash_read_status_raw
+                0x40100c60       0x27 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                                 0x2b (size before relaxing)
+                0x40100c60                spi_flash_read_status_raw
+ *fill*         0x40100c87        0x1 
+ .text.spi_flash_enable_qmode_raw
+                0x40100c88       0x33 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                                 0x37 (size before relaxing)
+                0x40100c88                spi_flash_enable_qmode_raw
+ *fill*         0x40100cbb        0x1 
+ .text.spi_user_cmd_raw
+                0x40100cbc      0x3c4 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                                0x3c8 (size before relaxing)
+                0x40100cbc                spi_user_cmd_raw
+ .text.spi_flash_switch_to_qio_raw
+                0x40101080       0x25 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                0x40101080                spi_flash_switch_to_qio_raw
+ *fill*         0x401010a5        0x3 
+ .text.crc32_le
+                0x401010a8       0x2d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+                0x401010a8                crc32_le
+ *fill*         0x401010d5        0x3 
+ .text.phy_reg_default
+                0x401010d8       0x36 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(phy.o)
+                0x401010e8                phy_reg_default
+ *fill*         0x4010110e        0x2 
+ .text.uart_div_modify
+                0x40101110       0x50 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(uart.o)
+                0x40101120                uart_div_modify
+ *fill*         0x40101160        0x0 
+ .text.index_to_partition
+                0x40101160       0x48 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *fill*         0x401011a8        0x0 
+ *(.iram1 .iram1.*)
+ *(.fini.literal)
+ *(.fini)
+ *(.gnu.version)
+                0x401011a8                _text_end = ABSOLUTE (.)
+                0x401011a8                _etext = .
+
+.bss            0x3ffe8000      0x408
+                0x3ffe8000                . = ALIGN (0x8)
+                0x3ffe8000                _bss_start = ABSOLUTE (.)
+ *(.dynsbss)
+ *(.sbss)
+ *(.sbss.*)
+ *(.gnu.linkonce.sb.*)
+ *(.scommon)
+ *(.sbss2)
+ *(.sbss2.*)
+ *(.gnu.linkonce.sb2.*)
+ *(.dynbss)
+ *(.bss)
+ *(.bss.*)
+ .bss.mapped    0x3ffe8000        0x1 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ *fill*         0x3ffe8001        0x3 
+ .bss.pbuf$3464
+                0x3ffe8004      0x400 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .bss.FlashIsOnGoing
+                0x3ffe8404        0x1 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                0x3ffe8404                FlashIsOnGoing
+ *(.gnu.linkonce.b.*)
+ *(COMMON)
+                0x3ffe8408                . = ALIGN (0x8)
+ *fill*         0x3ffe8405        0x3 
+                0x3ffe8408                _bss_end = ABSOLUTE (.)
+
+.data           0x3ffe8408       0x18
+                0x3ffe8408                _data_start = ABSOLUTE (.)
+ *(.data)
+ *(.data.*)
+ .data.g_rom_flashchip
+                0x3ffe8408       0x18 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                0x3ffe8408                g_rom_flashchip
+ *(.gnu.linkonce.d.*)
+ *(.data1)
+ *(.sdata)
+ *(.sdata.*)
+ *(.gnu.linkonce.s.*)
+ *(.sdata2)
+ *(.sdata2.*)
+ *(.gnu.linkonce.s2.*)
+ *(.jcr)
+                0x3ffe8420                _data_end = ABSOLUTE (.)
+
+.rodata         0x3ffe8420      0x400
+                0x3ffe8420                _rodata_start = ABSOLUTE (.)
+ *(.rodata)
+ *(.rodata.*)
+ .rodata.crc32_le_table
+                0x3ffe8420      0x400 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ *(.gnu.linkonce.r.*)
+ *(.rodata1)
+                0x3ffe8820                __XT_EXCEPTION_TABLE_ = ABSOLUTE (.)
+ *(.xt_except_table)
+ *(.gcc_except_table)
+ *(.gnu.linkonce.e.*)
+ *(.gnu.version_r)
+ *(.eh_frame)
+                0x3ffe8820                . = ((. + 0x3) & 0xfffffffc)
+                0x3ffe8820                __init_array_start = ABSOLUTE (.)
+ *crtbegin.o(.ctors)
+ *(EXCLUDE_FILE(*crtend.o) .ctors)
+ *(SORT(.ctors.*))
+ *(.ctors)
+                0x3ffe8820                __init_array_end = ABSOLUTE (.)
+ *crtbegin.o(.dtors)
+ *(EXCLUDE_FILE(*crtend.o) .dtors)
+ *(SORT(.dtors.*))
+ *(.dtors)
+                0x3ffe8820                __XT_EXCEPTION_DESCS_ = ABSOLUTE (.)
+ *(.xt_except_desc)
+ *(.gnu.linkonce.h.*)
+                0x3ffe8820                __XT_EXCEPTION_DESCS_END__ = ABSOLUTE (.)
+ *(.xt_except_desc_end)
+ *(.dynamic)
+ *(.gnu.version_d)
+                0x3ffe8820                _rodata_end = ABSOLUTE (.)
+                0x3ffe8820                _lit4_start = ABSOLUTE (.)
+ *(*.lit4)
+ *(.lit4.*)
+ *(.gnu.linkonce.lit4.*)
+                0x3ffe8820                _lit4_end = ABSOLUTE (.)
+                0x3ffe8820                . = ALIGN (0x4)
+                0x3ffe8820                _heap_start = ABSOLUTE (.)
+                0x60001100                PROVIDE (rtc_sys_info, 0x60001100)
+                0x400040c0                PROVIDE (SPI_sector_erase, 0x400040c0)
+                0x40004174                PROVIDE (SPI_page_program, 0x40004174)
+                0x400042ac                PROVIDE (SPI_read_data, 0x400042ac)
+                0x400043c8                PROVIDE (SPI_read_status, 0x400043c8)
+                0x40004400                PROVIDE (SPI_write_status, 0x40004400)
+                0x4000443c                PROVIDE (SPI_write_enable, 0x4000443c)
+                0x4000448c                PROVIDE (Wait_SPI_Idle, 0x4000448c)
+                0x400044c0                PROVIDE (Enable_QMode, 0x400044c0)
+                [!provide]                PROVIDE (Disable_QMode, 0x40004508)
+                0x40004678                PROVIDE (Cache_Read_Enable, 0x40004678)
+                0x400047f0                PROVIDE (Cache_Read_Disable, 0x400047f0)
+                [!provide]                PROVIDE (lldesc_build_chain, 0x40004f40)
+                [!provide]                PROVIDE (lldesc_num2link, 0x40005050)
+                [!provide]                PROVIDE (lldesc_set_owner, 0x4000507c)
+                [!provide]                PROVIDE (__adddf3, 0x4000c538)
+                [!provide]                PROVIDE (__addsf3, 0x4000c180)
+                [!provide]                PROVIDE (__divdf3, 0x4000cb94)
+                [!provide]                PROVIDE (__divdi3, 0x4000ce60)
+                [!provide]                PROVIDE (__divsi3, 0x4000dc88)
+                [!provide]                PROVIDE (__extendsfdf2, 0x4000cdfc)
+                [!provide]                PROVIDE (__fixdfsi, 0x4000ccb8)
+                [!provide]                PROVIDE (__fixunsdfsi, 0x4000cd00)
+                [!provide]                PROVIDE (__fixunssfsi, 0x4000c4c4)
+                [!provide]                PROVIDE (__floatsidf, 0x4000e2f0)
+                [!provide]                PROVIDE (__floatsisf, 0x4000e2ac)
+                [!provide]                PROVIDE (__floatunsidf, 0x4000e2e8)
+                [!provide]                PROVIDE (__floatunsisf, 0x4000e2a4)
+                [!provide]                PROVIDE (__muldf3, 0x4000c8f0)
+                [!provide]                PROVIDE (__muldi3, 0x40000650)
+                [!provide]                PROVIDE (__mulsf3, 0x4000c3dc)
+                [!provide]                PROVIDE (__subdf3, 0x4000c688)
+                [!provide]                PROVIDE (__subsf3, 0x4000c268)
+                [!provide]                PROVIDE (__truncdfsf2, 0x4000cd5c)
+                [!provide]                PROVIDE (__udivdi3, 0x4000d310)
+                0x4000e21c                PROVIDE (__udivsi3, 0x4000e21c)
+                [!provide]                PROVIDE (__umoddi3, 0x4000d770)
+                0x4000e268                PROVIDE (__umodsi3, 0x4000e268)
+                [!provide]                PROVIDE (__umulsidi3, 0x4000dcf0)
+                [!provide]                PROVIDE (bzero, 0x4000de84)
+                [!provide]                PROVIDE (memcmp, 0x4000dea8)
+                0x4000df48                PROVIDE (memcpy, 0x4000df48)
+                [!provide]                PROVIDE (memmove, 0x4000e04c)
+                0x4000e190                PROVIDE (memset, 0x4000e190)
+                [!provide]                PROVIDE (strcmp, 0x4000bdc8)
+                [!provide]                PROVIDE (strcpy, 0x4000bec8)
+                [!provide]                PROVIDE (strlen, 0x4000bf4c)
+                [!provide]                PROVIDE (strncmp, 0x4000bfa8)
+                [!provide]                PROVIDE (strncpy, 0x4000c0a0)
+                [!provide]                PROVIDE (strstr, 0x4000e1e0)
+                0x40004cf0                PROVIDE (gpio_input_get, 0x40004cf0)
+                [!provide]                PROVIDE (gpio_pin_wakeup_disable, 0x40004ed4)
+                [!provide]                PROVIDE (gpio_pin_wakeup_enable, 0x40004e90)
+                0x40001f00                PROVIDE (ets_io_vprintf, 0x40001f00)
+                [!provide]                PROVIDE (uart_rx_one_char, 0x40003b8c)
+                [!provide]                PROVIDE (rom_i2c_readReg, 0x40007268)
+                [!provide]                PROVIDE (rom_i2c_readReg_Mask, 0x4000729c)
+                [!provide]                PROVIDE (rom_i2c_writeReg, 0x400072d8)
+                [!provide]                PROVIDE (rom_i2c_writeReg_Mask, 0x4000730c)
+                [!provide]                PROVIDE (rom_software_reboot, 0x40000080)
+                [!provide]                PROVIDE (ets_memcpy, 0x400018b4)
+                0x40004b1c                PROVIDE (SPIRead, 0x40004b1c)
+                0x40004a4c                PROVIDE (SPIWrite, 0x40004a4c)
+                0x40004a00                PROVIDE (SPIEraseSector, 0x40004a00)
+                [!provide]                PROVIDE (gpio_input_get, 0x40004cf0)
+                [!provide]                PROVIDE (xthal_get_ccount, 0x4000dd38)
+                [!provide]                PROVIDE (uart_div_modify, 0x400039d8)
+                [!provide]                PROVIDE (ets_io_vprintf, 0x40001f00)
+OUTPUT(C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader.elf elf32-xtensa-le)
+
+.debug_frame    0x00000000      0x8b8
+ .debug_frame   0x00000000       0x30 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+ .debug_frame   0x00000030       0xf0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .debug_frame   0x00000120       0x30 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+ .debug_frame   0x00000150       0xd8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .debug_frame   0x00000228       0x6c C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .debug_frame   0x00000294       0x38 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+ .debug_frame   0x000002cc       0x80 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .debug_frame   0x0000034c      0x318 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .debug_frame   0x00000664      0x15c C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .debug_frame   0x000007c0       0x58 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .debug_frame   0x00000818       0x60 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .debug_frame   0x00000878       0x40 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+
+.debug_info     0x00000000     0x4ad2
+ .debug_info    0x00000000      0x49e C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+ .debug_info    0x0000049e      0xa94 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .debug_info    0x00000f32      0x3fd C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+ .debug_info    0x0000132f      0x3dc C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .debug_info    0x0000170b      0xa7b C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .debug_info    0x00002186      0x34c C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+ .debug_info    0x000024d2      0x339 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .debug_info    0x0000280b     0x1489 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .debug_info    0x00003c94      0x6f1 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .debug_info    0x00004385      0x307 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .debug_info    0x0000468c      0x239 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .debug_info    0x000048c5      0x20d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+
+.debug_abbrev   0x00000000     0x165f
+ .debug_abbrev  0x00000000      0x1ca C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+ .debug_abbrev  0x000001ca      0x2b0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .debug_abbrev  0x0000047a      0x1d5 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+ .debug_abbrev  0x0000064f      0x187 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .debug_abbrev  0x000007d6      0x253 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .debug_abbrev  0x00000a29      0x15e C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+ .debug_abbrev  0x00000b87      0x1a8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .debug_abbrev  0x00000d2f      0x3d3 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .debug_abbrev  0x00001102      0x176 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .debug_abbrev  0x00001278      0x1c8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .debug_abbrev  0x00001440      0x17f C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .debug_abbrev  0x000015bf       0xa0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+
+.debug_loc      0x00000000     0x29df
+ .debug_loc     0x00000000       0x7c C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+ .debug_loc     0x0000007c      0x558 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .debug_loc     0x000005d4       0x13 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+ .debug_loc     0x000005e7      0x286 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .debug_loc     0x0000086d      0x682 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .debug_loc     0x00000eef       0xf0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+ .debug_loc     0x00000fdf      0x14c C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .debug_loc     0x0000112b     0x1094 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .debug_loc     0x000021bf      0x499 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .debug_loc     0x00002658       0xd0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .debug_loc     0x00002728       0x81 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .debug_loc     0x000027a9      0x236 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+
+.debug_aranges  0x00000000      0x300
+ .debug_aranges
+                0x00000000       0x20 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+ .debug_aranges
+                0x00000020       0x48 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .debug_aranges
+                0x00000068       0x20 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+ .debug_aranges
+                0x00000088       0x40 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .debug_aranges
+                0x000000c8       0x28 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .debug_aranges
+                0x000000f0       0x20 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+ .debug_aranges
+                0x00000110       0x30 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .debug_aranges
+                0x00000140       0xc8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .debug_aranges
+                0x00000208       0x70 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .debug_aranges
+                0x00000278       0x28 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .debug_aranges
+                0x000002a0       0x30 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .debug_aranges
+                0x000002d0       0x30 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+
+.debug_ranges   0x00000000      0x3a0
+ .debug_ranges  0x00000000       0x10 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+ .debug_ranges  0x00000010       0x80 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .debug_ranges  0x00000090       0x10 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+ .debug_ranges  0x000000a0       0x30 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .debug_ranges  0x000000d0       0x88 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .debug_ranges  0x00000158       0x40 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+ .debug_ranges  0x00000198       0x50 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .debug_ranges  0x000001e8      0x100 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .debug_ranges  0x000002e8       0x60 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .debug_ranges  0x00000348       0x18 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .debug_ranges  0x00000360       0x20 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .debug_ranges  0x00000380       0x20 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+
+.debug_line     0x00000000     0x3978
+ .debug_line    0x00000000      0x355 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+ .debug_line    0x00000355      0x6a9 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .debug_line    0x000009fe      0x38c C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+ .debug_line    0x00000d8a      0x39c C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .debug_line    0x00001126      0x515 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .debug_line    0x0000163b      0x355 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+ .debug_line    0x00001990      0x3a3 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .debug_line    0x00001d33      0xd65 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .debug_line    0x00002a98      0x736 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .debug_line    0x000031ce      0x382 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .debug_line    0x00003550      0x280 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .debug_line    0x000037d0      0x1a8 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+
+.debug_str      0x00000000     0x18cf
+ .debug_str     0x00000000      0x467 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+                                0x4f0 (size before relaxing)
+ .debug_str     0x00000467      0x2d6 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+                                0x71a (size before relaxing)
+ .debug_str     0x0000073d      0x2d3 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+                                0x5a8 (size before relaxing)
+ .debug_str     0x00000a10      0x12d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+                                0x39d (size before relaxing)
+ .debug_str     0x00000b3d      0x1dd C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+                                0x789 (size before relaxing)
+ .debug_str     0x00000d1a       0xf9 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+                                0x3c1 (size before relaxing)
+ .debug_str     0x00000e13      0x181 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+                                0x3a7 (size before relaxing)
+ .debug_str     0x00000f94      0x553 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+                                0x92b (size before relaxing)
+ .debug_str     0x000014e7      0x142 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+                                0x4e8 (size before relaxing)
+ .debug_str     0x00001629      0x143 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+                                0x2ea (size before relaxing)
+ .debug_str     0x0000176c       0xd0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+                                0x23c (size before relaxing)
+ .debug_str     0x0000183c       0x93 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+                                0x1b7 (size before relaxing)
+
+.comment        0x00000000       0x76
+ .comment       0x00000000       0x3c C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+                                 0x3d (size before relaxing)
+ .comment       0x0000003c       0x3d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .comment       0x0000003c       0x3d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+ .comment       0x0000003c       0x3d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .comment       0x0000003c       0x3d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .comment       0x0000003c       0x3d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+ .comment       0x0000003c       0x3d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .comment       0x0000003c       0x3d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .comment       0x0000003c       0x3d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .comment       0x0000003c       0x3d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .comment       0x0000003c       0x3d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .comment       0x0000003c       0x3d C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ .comment       0x0000003c       0x3a C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(phy.o)
+                                 0x3b (size before relaxing)
+ .comment       0x00000076       0x3b C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(uart.o)
+
+.xtensa.info    0x00000000       0x38
+ .xtensa.info   0x00000000       0x38 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/main\libmain.a(bootloader_start.o)
+ .xtensa.info   0x00000038        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_utility.o)
+ .xtensa.info   0x00000038        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_init.o)
+ .xtensa.info   0x00000038        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_flash.o)
+ .xtensa.info   0x00000038        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(esp_image_format.o)
+ .xtensa.info   0x00000038        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(flash_partitions.o)
+ .xtensa.info   0x00000038        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/bootloader_support\libbootloader_support.a(bootloader_common.o)
+ .xtensa.info   0x00000038        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash.o)
+ .xtensa.info   0x00000038        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/spi_flash\libspi_flash.a(spi_flash_raw.o)
+ .xtensa.info   0x00000038        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/log\liblog.a(log.o)
+ .xtensa.info   0x00000038        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/esp8266\libesp8266.a(ets_printf.o)
+ .xtensa.info   0x00000038        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/build/bootloader/util\libutil.a(crc.o)
+ .xtensa.info   0x00000038        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(phy.o)
+ .xtensa.info   0x00000038        0x0 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/lib\libcore.a(uart.o)
