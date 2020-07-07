@@ -349,6 +349,16 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     case SYSTEM_EVENT_STA_START:
         esp_wifi_connect();
         break;
+    case SYSTEM_EVENT_STA_CONNECTED:
+        ESP_LOGI("WIFI", "connected:%s",
+                 event->event_info.connected.ssid);
+#ifdef CONFIG_BLACKMAGIC_HOSTNAME
+        tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, CONFIG_BLACKMAGIC_HOSTNAME);
+        
+        ESP_LOGI("WIFI", "setting hostname:%s",
+                  CONFIG_BLACKMAGIC_HOSTNAME);
+#endif
+        break;
     case SYSTEM_EVENT_STA_GOT_IP:
         ESP_LOGI("WIFI", "got ip:%s",
                  ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
@@ -414,9 +424,17 @@ void wifi_init_softap()
 
 }
 #endif
-#if CONFIG_ESP_WIFI_MODE_STA
+#if CONFIG_ESP_WIFI_IS_STATION
 void wifi_init_sta()
 {
+    ESP_LOGI(__func__, "wifi_init_sta begun.");
+
+    tcpip_adapter_init();
+    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
+
+    uint8_t mac_address[8];
+    esp_err_t result;
+
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     wifi_config_t wifi_config = {
@@ -426,8 +444,17 @@ void wifi_init_sta()
         },
     };
 
+    result = esp_base_mac_addr_get(mac_address);
+
+    if(result == ESP_ERR_INVALID_MAC) {
+      ESP_LOGE(__func__, "base mac address invalid.  reading from fuse.");
+      ESP_ERROR_CHECK(esp_efuse_mac_get_default(mac_address));
+      ESP_ERROR_CHECK(esp_base_mac_addr_set(mac_address));
+      ESP_LOGE(__func__, "base mac address configured.");
+    }
+
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
-    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM) );
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
 
     ESP_ERROR_CHECK(esp_wifi_start() );
@@ -454,7 +481,10 @@ int putc_remote(int c) {
 
 
 void app_main(void) {
+#if CONFIG_TARGET_UART
+#warning Target UART configured.  ESP8266 debugging info will not be available via UART.
   esp_log_set_putchar(putc_noop);
+#endif
 
   esp_err_t ret = nvs_flash_init();
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
@@ -465,16 +495,22 @@ void app_main(void) {
 
   ESP_ERROR_CHECK(nvs_open("config", NVS_READWRITE, &h_nvs_conf));
 
-#if CONFIG_ESP_WIFI_MODE_STA
+#if CONFIG_ESP_WIFI_IS_STATION
   wifi_init_sta();
 #else
   wifi_init_softap();
-#endif
 
   esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G);
+#endif
+
   //esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B);
 
   httpd_start();
+
+  esp_wifi_set_ps (WIFI_PS_NONE);
+
+#if CONFIG_TARGET_UART
+  ESP_LOGI(__func__, "configuring uart for target");
 
   esp_log_set_putchar(putc_remote);
 
@@ -483,8 +519,6 @@ void app_main(void) {
 
   uart_set_baudrate(0, baud);
   uart_set_baudrate(1, baud);
-
-  esp_wifi_set_ps (WIFI_PS_NONE);
 
   ESP_ERROR_CHECK(uart_driver_install(0, 4096, 256, 16, &uart_event_queue, 0));
 
@@ -500,11 +534,15 @@ void app_main(void) {
 
   uart_intr_config(0, &uart_intr);
 
+#endif
+
   xTaskCreate(&dbg_task, "dbg_main", 1024, NULL, 4, NULL);
   xTaskCreate(&main, "bmp_main", 8192, NULL, 1, NULL);
 
+#if CONFIG_TARGET_UART
   xTaskCreate(&uart_rx_task, "uart_rx_task", 1200, NULL, 5, NULL);
   xTaskCreate(&net_uart_task, "net_uart_task", 1200, NULL, 5, NULL);
+#endif
 
   ota_tftp_init_server(69, 4);
 
