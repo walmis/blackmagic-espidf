@@ -65,17 +65,13 @@ esptool.py --chip esp8266 --baud 115200 --before default_reset --after hard_rese
 
 ## STA Fix:
 
-Applayed in main/platform.c
+in main/platform.c
 
 ```bash
 - #if CONFIG_ESP_WIFI_MODE_STA  
 + #if CONFIG_ESP_WIFI_IS_STATION 
 ```
-at 417 and 468 for fixing STA mode.
-
-Can compilling and downloading but crashing all time.
-
-AP mode works OK.
+changend line 417 and 468
 
 
 ## OTA Flashing
