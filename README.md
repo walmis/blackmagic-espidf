@@ -54,8 +54,7 @@ make flash # this will flash using esptool.py over serial connection
 
 ## Flash precompiled ESP8266 firmware
 
-Download all *.bin files from folder [firmware](https://github.com/Jason2866/blackmagic-espidf/tree/master/firmware)  
-and flash via esptool.py with command:
+Download all *.bin files from folder [firmware](https://github.com/Jason2866/blackmagic-espidf/tree/master/firmware) and flash via esptool.py with command:
 
 ```
 esptool.py --chip esp8266 --baud 115200 --before default_reset --after hard_reset write_flash -z --flash_mode dout --flash_freq 80m --flash_size 4MB 0xd000 ota_data_initial.bin 0x0000 bootloader.bin 0x10000 blackmagic.bin 0x8000 partitions_two_ota.bin
