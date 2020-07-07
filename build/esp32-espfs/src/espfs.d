@@ -28,6 +28,10 @@ src/espfs.o: \
  C:/msys32/home/Hans/esp/blackmagic-espidf/components/esp32-espfs/include/espfsformat.h \
  C:/msys32/home/Hans/esp/blackmagic-espidf/components/esp32-espfs/include/espfs.h \
  C:/msys32/home/Hans/esp/blackmagic-espidf/build/include/sdkconfig.h \
+ C:/msys32/home/Hans/esp/blackmagic-espidf/components/esp32-espfs/src/heatshrink_config_custom.h \
+ C:/msys32/home/Hans/esp/blackmagic-espidf/components/esp32-espfs/heatshrink/include/heatshrink_decoder.h \
+ C:/msys32/home/Hans/esp/blackmagic-espidf/components/esp32-espfs/heatshrink/include/heatshrink_common.h \
+ C:/msys32/home/Hans/esp/blackmagic-espidf/components/esp32-espfs/heatshrink/src/heatshrink_config.h \
  C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/log/include/esp_log.h \
  C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/include/rom/ets_sys.h \
  C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/esp8266/include/esp8266/eagle_soc.h \
@@ -89,6 +93,14 @@ C:/msys32/home/Hans/esp/blackmagic-espidf/components/esp32-espfs/include/espfsfo
 C:/msys32/home/Hans/esp/blackmagic-espidf/components/esp32-espfs/include/espfs.h:
 
 C:/msys32/home/Hans/esp/blackmagic-espidf/build/include/sdkconfig.h:
+
+C:/msys32/home/Hans/esp/blackmagic-espidf/components/esp32-espfs/src/heatshrink_config_custom.h:
+
+C:/msys32/home/Hans/esp/blackmagic-espidf/components/esp32-espfs/heatshrink/include/heatshrink_decoder.h:
+
+C:/msys32/home/Hans/esp/blackmagic-espidf/components/esp32-espfs/heatshrink/include/heatshrink_common.h:
+
+C:/msys32/home/Hans/esp/blackmagic-espidf/components/esp32-espfs/heatshrink/src/heatshrink_config.h:
 
 C:/msys32/home/Hans/esp/blackmagic-espidf/ESP8266_RTOS_SDK/components/log/include/esp_log.h:
 

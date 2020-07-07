@@ -54,6 +54,9 @@ make
 make flash # this will flash using esptool.py over serial connection
 ```
 
+You may also need to install ZLIB using MINGW32, and the command `pacman -S zlib-devel`.
+
+## ![zlib](images/zlib.png)
 
 ## Flash precompiled ESP8266 firmware
 
