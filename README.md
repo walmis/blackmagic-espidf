@@ -52,7 +52,7 @@ make flash # this will flash using esptool.py over serial connection
 ```
 
 
-## Flash precompiled firmware
+## Flash precompiled ESP8266 firmware
 
 Download all *.bin files from folder [firmware](https://github.com/Jason2866/blackmagic-espidf/tree/master/firmware)  
 and flash via esptool.py with command:
