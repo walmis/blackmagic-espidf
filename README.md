@@ -63,20 +63,18 @@ If the firmware is already on the esp8266 device, it is possible to flash using 
 ```bash
 make tftpflash
 ```
-## STA Fix:
+### Station Mode Configuration
 
-Applayed in main/platform.c
+To use the ESP8266 in Station mode, in the Blackmagic configuration section:
+- Configure Station mode
+- Specify the SSID and password you wish to connect to.  *NOTE: The SSID is case sensitive*
+- (optional) Specify a hostname to make it easier to connect to the probe.
 
-```bash
-- #if CONFIG_ESP_WIFI_MODE_STA  
-+ #if CONFIG_ESP_WIFI_IS_STATION 
-```
-at 417 and 468 for fixing STA mode.
+### Development/Debug Configuration
 
-Can compilling and downloading but crashing all time.
+When working on blackmagic-espidf it is frequently desirable to continue to use the ESP8266 UART for debugging.  To achieve this you can disable `Monitor target UART` in the Blackmagic configuration section.
 
-AP mode works OK.
-
+In this mode you will be unable to use the ESP UART to monitor the target and connecting the ESP UART to the target may result in undefined behavior since the debug messages will be sent to the target.
 
 ## Binaries:
 Instruction and download at [Visualmicro](https://www.visualmicro.com/page/Create-a-WiFi-Black-Magic-GDB-Probe-from-ESP8266.aspx)
