@@ -51,7 +51,18 @@ make
 make flash # this will flash using esptool.py over serial connection
 ```
 
+### Station Mode Configuration
 
+To use the ESP8266 in Station mode, in the Blackmagic configuration section:
+- Configure Station mode
+- Specify the SSID and password you wish to connect to.  *NOTE: The SSID is case sensitive*
+- (optional) Specify a hostname to make it easier to connect to the probe.
+
+### Development/Debug Configuration
+
+When working on blackmagic-espidf it is frequently desirable to continue to use the ESP8266 UART for debugging.  To achieve this you can disable `Monitor target UART` in the Blackmagic configuration section.
+
+In this mode you will be unable to use the ESP UART to monitor the target and connecting the ESP UART to the target may result in undefined behavior since the debug messages will be sent to the target.
 
 ## OTA Flashing
 
