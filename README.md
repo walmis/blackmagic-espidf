@@ -42,6 +42,14 @@ Connecting to serial terminal can be done using socat:
 socat tcp:192.168.4.1:23,crlf -,echo=0,raw,crlf
 ```
 
+## Flash precompiled ESP8266 firmware
+
+Download all *.bin files from folder [firmware](https://github.com/Jason2866/blackmagic-espidf/tree/master/firmware) and flash via esptool.py with command:
+
+```
+esptool.py --chip esp8266 --baud 115200 --before default_reset --after hard_reset write_flash -z --flash_mode dout --flash_freq 80m --flash_size 4MB 0xd000 ota_data_initial.bin 0x0000 bootloader.bin 0x10000 blackmagic.bin 0x8000 partitions_two_ota.bin
+```
+
 ## Building
 
 Grab the toolchain from https://github.com/espressif/ESP8266_RTOS_SDK#developing-with-the-esp8266_rtos_sdk  and add it to $PATH.
@@ -57,14 +65,6 @@ make flash # this will flash using esptool.py over serial connection
 You may also need to install ZLIB using MINGW32, and the command `pacman -S zlib-devel`.
 
 ## ![zlib](images/zlib.png)
-
-## Flash precompiled ESP8266 firmware
-
-Download all *.bin files from folder [firmware](https://github.com/Jason2866/blackmagic-espidf/tree/master/firmware) and flash via esptool.py with command:
-
-```
-esptool.py --chip esp8266 --baud 115200 --before default_reset --after hard_reset write_flash -z --flash_mode dout --flash_freq 80m --flash_size 4MB 0xd000 ota_data_initial.bin 0x0000 bootloader.bin 0x10000 blackmagic.bin 0x8000 partitions_two_ota.bin
-```
 
 ### Station Mode Configuration
 
