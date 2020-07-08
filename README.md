@@ -29,7 +29,7 @@ By disabling OTA it should work on 1MB devices.
 | GPIO=2 | D4 | TCK | SWCLK | 4 |
 | GPIO=14 | D5 | TDO | SWO | 6 |
 | GPIO=13 | D7 | TDI | - | 8 |
-| GPIO=12 | 63 | nRESET | - | 10 |
+| GPIO=12 | RST | nRESET | - | 10 |
 | GPIO=1 | TX | - | - | - |
 | GPIO=3 | RX | - | - | - |
 
