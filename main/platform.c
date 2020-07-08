@@ -354,7 +354,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
                  event->event_info.connected.ssid);
 #ifdef CONFIG_BLACKMAGIC_HOSTNAME
         tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, CONFIG_BLACKMAGIC_HOSTNAME);
-        
+
         ESP_LOGI("WIFI", "setting hostname:%s",
                   CONFIG_BLACKMAGIC_HOSTNAME);
 #endif
@@ -483,6 +483,7 @@ int putc_remote(int c) {
 void app_main(void) {
 #if CONFIG_TARGET_UART
 #warning Target UART configured.  ESP8266 debugging info will not be available via UART.
+  ESP_LOGI(__func__, "deactivating debug uart");
   esp_log_set_putchar(putc_noop);
 #endif
 
