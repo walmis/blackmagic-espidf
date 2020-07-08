@@ -22,7 +22,7 @@
         var fitAddon = new FitAddon.FitAddon();
         term.loadAddon(fitAddon);
         
-        var socket = new WebSocket("ws://192.168.4.1/debugws");
+        var socket = new WebSocket("ws://" + location.host + "/debugws");
         socket.onopen = function(e) {
           term.write("\x1B[1;3;31m[Websocket] Connection established\x1B[0m\r\n");
         };
