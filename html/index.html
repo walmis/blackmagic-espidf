@@ -150,30 +150,36 @@
         var term = new Terminal({cursorBlink: true, convertEol: true });
         var fitAddon = new FitAddon.FitAddon();
         term.loadAddon(fitAddon);
-        
-        var socket = new WebSocket("ws://" + location.host + "/terminal");
-        socket.onopen = function(e) {
-          term.write("\x1B[1;3;31m[Websocket] Connection established\x1B[0m\r\n");
-        };
+        var socket;
 
-        socket.onmessage = function(event) {
-            term.write(event.data);          
-        };
+        function createSocket() {
+          socket = new WebSocket("ws://" + window.location.host + "/terminal");
+          socket.binaryType = 'arraybuffer';
 
-        socket.onclose = function(event) {
-          if (event.wasClean) {
-            term.write("[Websocket] Connection closed");
-          } else {
-            // e.g. server process killed or network down
-            // event.code is usually 1006 in this case
-            term.write("[Websocket] Connection died");
-          }
-        };
+          socket.onopen = function(e) {
+            term.write("\x1B[1;3;31m[Websocket] Connection established\x1B[0m\r\n");
+          };
 
+          socket.onmessage = function(event) {
+              term.write(new Uint8Array(event.data));          
+          };
+
+          socket.onclose = function(event) {
+            if (event.wasClean) {
+              term.write("[Websocket] Connection closed");
+            } else {
+              // e.g. server process killed or network down
+              // event.code is usually 1006 in this case
+              term.write("[Websocket] Connection died");
+            }
+
+            createSocket();
+          };
+        }
+
+        createSocket();
         
         term.open(document.getElementById('terminal'));
-
-
 
         //term.write('Hello from \x1B[1;3;31mxterm.js\x1B[0m $ ')
         

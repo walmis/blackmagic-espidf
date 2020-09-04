@@ -199,7 +199,7 @@ HttpdBuiltInUrl builtInUrls[]={
 };
 
 void http_term_broadcast_data(uint8_t* data, size_t len) {
-  cgiWebsockBroadcast(&instance.httpdInstance, "/terminal", (char*)data, len, WEBSOCK_FLAG_NONE);
+  cgiWebsockBroadcast(&instance.httpdInstance, "/terminal", (char*)data, len, WEBSOCK_FLAG_BIN);
 }
 
 
@@ -210,7 +210,7 @@ void http_debug_putc(char c, int flush) {
 
 	buf[bufsize++] = c;
 	if (flush || (bufsize == sizeof(buf))) {
-		cgiWebsockBroadcast(&instance.httpdInstance, "/debugws", (char*)buf, bufsize, WEBSOCK_FLAG_NONE);
+		cgiWebsockBroadcast(&instance.httpdInstance, "/debugws", (char*)buf, bufsize, WEBSOCK_FLAG_BIN);
 
 		bufsize = 0;
 	}
