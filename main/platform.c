@@ -464,6 +464,17 @@ void wifi_init_sta()
 }
 #endif
 
+void uart_send_break() {
+  uart_wait_tx_done(0, 10);
+  uint32_t baud;
+  uart_get_baudrate(0, &baud); //save current baudrate
+  uart_set_baudrate(0, baud/2); // set half the baudrate
+  char b = 0x00;
+  uart_write_bytes(0, &b, 1);
+  uart_wait_tx_done(0, 10);
+  uart_set_baudrate(0, baud); //restore baudrate
+}
+
 //defined in blackmagic component
 extern void main();
 

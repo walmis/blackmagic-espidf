@@ -24,6 +24,7 @@
 
 
       <button id="sendbtn" type="button">SEND</button>
+      <button id="sendbrk" type="button">BRK</button>
       <input type="checkbox" id="echo" checked>Echo</input>
       <button type="button" id="setbaud">SET BAUD</button>
       <button type="button" id="clear">CLEAR</button>
@@ -67,6 +68,13 @@
             document.querySelector("#curbaud").textContent = d["baudrate"]
           }
         };
+
+        function sendBreak() {
+          let xhr = new XMLHttpRequest();
+          xhr.open('GET', '/uart/break');
+            // 3. Send the request over the network
+           xhr.send();
+        }
 
         function setBaud(baud) {
             let xhr = new XMLHttpRequest();
@@ -120,6 +128,9 @@
         }
         document.querySelector("#sendbtn").onclick = event => {
             sendLine();
+        }
+        document.querySelector("#sendbrk").onclick = event => {
+            sendBreak();
         }
         document.querySelector("#line").addEventListener("keydown", event => {
             //console.log(event.key)

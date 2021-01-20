@@ -48,6 +48,29 @@ static void on_debug_connect(Websock *ws) {
   //cgiWebsocketSend(&instance.httpdInstance, ws, "Debug connected\r\n", 17, WEBSOCK_FLAG_NONE);
 }
 
+void uart_send_break();
+
+CgiStatus cgi_uart_break(HttpdConnData *connData) {
+  int len;
+  char buff[64];
+
+  if (connData->isConnectionClosed) {
+    //Connection aborted. Clean up.
+    return HTTPD_CGI_DONE;
+  }
+
+  uart_send_break();
+
+  httpdStartResponse(connData, 200);
+  httpdHeader(connData, "Content-Type", "text/json");
+  httpdEndHeaders(connData);
+
+  httpdSend(connData, 0, 0);
+
+
+  return HTTPD_CGI_DONE;
+}
+
 CgiStatus cgi_baud(HttpdConnData *connData) {
   int len;
   char buff[64];
@@ -184,6 +207,7 @@ HttpdBuiltInUrl builtInUrls[]={
 //  {"/wifi/connect.cgi", cgiWiFiConnect, NULL},
 //  {"/wifi/connstatus.cgi", cgiWiFiConnStatus, NULL},
   {"/uart/baud", cgi_baud, NULL, 0},
+  {"/uart/break", cgi_uart_break, NULL, 0},
   {"/status", cgi_status, NULL, 0},
 //
   {"/terminal", cgiWebsocket, (const void*)on_term_connect, 0},
