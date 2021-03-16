@@ -11,4 +11,4 @@ url = https://github.com/walmis/libesphttpd.git
 
 [submodule "components/blackmagic/blackmagic"]
 	path = components/blackmagic/blackmagic
-	url = https://github.com/walmis/blackmagic.git
+	url = https://github.com/blacksphere/blackmagic.git

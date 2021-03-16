@@ -5,6 +5,7 @@
 #include "semphr.h"
 extern "C" {
 #include "gdb_packet.h"
+int gdb_main_loop(struct target_controller * tc, bool in_syscall);
 }
 
 #undef DEBUG_GDB
@@ -42,6 +43,7 @@ public:
     virtual int fileno() = 0;
 
 protected:
+    friend int ::gdb_main_loop(struct target_controller * tc, bool in_syscall);
     void handle_q_packet(char *packet, int len);
     void handle_v_packet(char *packet, int plen);
     void handle_z_packet(char *packet, int plen);

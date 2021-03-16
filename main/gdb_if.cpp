@@ -215,6 +215,44 @@ void gdb_if_putchar(unsigned char c, int flush) {
 	_this->gdb_if_putchar(c, flush);	
 }
 
+extern "C"
+void gdb_out(const char *buf) {
+	void** ptr = (void**)pvTaskGetThreadLocalStoragePointer(NULL, 0);
+	assert(ptr);
+	GDB* _this = (GDB*)ptr[0];
+	_this->gdb_out(buf);	
+}
+
+extern "C"
+void gdb_voutf(const char *fmt, va_list ap) {
+	void** ptr = (void**)pvTaskGetThreadLocalStoragePointer(NULL, 0);
+	assert(ptr);
+	GDB* _this = (GDB*)ptr[0];
+	_this->gdb_voutf(fmt, ap);	
+}
+
+extern "C"
+void gdb_outf(const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	void** ptr = (void**)pvTaskGetThreadLocalStoragePointer(NULL, 0);
+	assert(ptr);
+	GDB* _this = (GDB*)ptr[0];
+	_this->gdb_voutf(fmt, ap);
+	va_end(ap);
+}
+
+extern "C"
+void gdb_putpacket_f(const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	void** ptr = (void**)pvTaskGetThreadLocalStoragePointer(NULL, 0);
+	assert(ptr);
+	GDB* _this = (GDB*)ptr[0];
+	_this->gdb_putpacket_f(fmt, ap);
+	va_end(ap);
+}
+
 #if 0
 #include "general.h"
 #include "gdb_if.h"

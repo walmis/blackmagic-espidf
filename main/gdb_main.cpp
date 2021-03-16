@@ -128,7 +128,7 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 			int devs = -1;
 			volatile struct exception e;
 			TRY_CATCH (e, EXCEPTION_ALL) {
-				devs = adiv5_swdp_scan();
+				devs = adiv5_swdp_scan(0);
 				ESP_LOGI("GDB", "Found %d", devs);
 				if(devs > 0) {
 					cur_target = target_attach_n(1, &gdb_controller);
@@ -647,4 +647,12 @@ GDB::handle_z_packet(char *packet, int plen)
 void GDB::gdb_main(void)
 {
 	gdb_main_loop(&gdb_controller, false);
+}
+
+extern "C"
+int gdb_main_loop(struct target_controller * tc, bool in_syscall) {
+	void** ptr = (void**)pvTaskGetThreadLocalStoragePointer(NULL, 0);
+	assert(ptr);
+	GDB* _this = (GDB*)ptr[0];
+	return _this->gdb_main_loop(tc, in_syscall);	
 }
