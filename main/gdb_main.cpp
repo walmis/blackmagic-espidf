@@ -37,6 +37,7 @@ extern "C" {
 #include "morse.h"
 #include "exception.h"
 #include "target/adiv5.h"
+#include "target/target_internal.h"
 }
 
 #include "gdb_if.hpp"
@@ -99,6 +100,22 @@ static struct target_controller gdb_controller = {
 	.system = hostio_system,
 };
 
+static bool cmd_reset(target *t, int argc, const char **argv) {
+	if(argc == 2) {
+		if(strcmp(argv[1], "init") == 0 || strcmp(argv[1], "halt") == 0) {
+			ESP_LOGI(__func__, "resetting target:%s", argv[1]);
+			target_halt_request(t);
+			target_reset(t);
+		} 
+	} else {
+		ESP_LOGI(__func__, "resetting target");
+		target_reset(t);
+	}
+
+	return true;
+}
+
+
 int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 {
 	int size;
@@ -115,6 +132,10 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 				ESP_LOGI("GDB", "Found %d", devs);
 				if(devs > 0) {
 					cur_target = target_attach_n(1, &gdb_controller);
+					if(cur_target) {
+						static const struct command_s cmds[]  = { {"reset", cmd_reset, "OpenOCD style target reset: reset [init halt run]"}, {0,0,0} };
+						target_add_commands(cur_target, cmds, "Target");
+					}
 				}
 			}
 			switch (e.type) {
@@ -449,8 +470,9 @@ GDB::handle_q_packet(char *packet, int len)
 		}
 		char* buf = (char*)malloc(1024);
 		target_mem_map(cur_target, buf, 1024); /* Fixme: Check size!*/
-		//buf[strlen(buf) - strlen("</memory-map>")] = 0;
-		strcpy(buf+strlen(buf)-13, "<memory type=\"ram\" start=\"0x30000000\" length=\"0xCFFFFFFF\"/></memory-map>\0");
+		//HACK to get SFRs working
+		strcpy(buf+strlen(buf)-strlen("</memory-map>"), 
+		    "<memory type=\"ram\" start=\"0x30000000\" length=\"0xCFFFFFFF\"/></memory-map>\0");
 
 		handle_q_string_reply(buf, packet + 23);
 
