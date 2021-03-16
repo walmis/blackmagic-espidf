@@ -61,6 +61,18 @@
 
 #include "ota-tftp.h"
 
+uint32_t swd_delay_cnt;
+
+void platform_max_frequency_set(uint32_t freq)
+{
+	(void)freq;
+}
+
+uint32_t platform_max_frequency_get(void)
+{
+	return 0;
+}
+
 nvs_handle h_nvs_conf;
 
 uint32_t uart_overrun_cnt;
@@ -101,7 +113,6 @@ void platform_init() {
   gpio_enable(SWCLK_PIN, GPIO_OUTPUT);
   gpio_enable(SWDIO_PIN, GPIO_OUTPUT);
 
-  assert(gdb_if_init() == 0);
 }
 
 void platform_buffer_flush(void) {
@@ -378,7 +389,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         ESP_LOGE("WIFI", "Disconnect reason : %d", info->disconnected.reason);
         if (info->disconnected.reason == WIFI_REASON_BASIC_RATE_NOT_SUPPORT) {
             /*Switch to 802.11 bgn mode */
-            esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCAL_11B | WIFI_PROTOCAL_11G | WIFI_PROTOCAL_11N);
+            //esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCAL_11B | WIFI_PROTOCAL_11G | WIFI_PROTOCAL_11N);
         }
         esp_wifi_connect();
         //xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
@@ -396,6 +407,9 @@ void wifi_init_softap()
 
     tcpip_adapter_init();
     ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
+
+    uint8_t val = 0;
+    tcpip_adapter_dhcps_option(TCPIP_ADAPTER_OP_SET, TCPIP_ADAPTER_ROUTER_SOLICITATION_ADDRESS, &val, sizeof(dhcps_offer_t));
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -463,9 +477,10 @@ void wifi_init_sta()
 
 }
 #endif
-
+//wifi_softap_set_dhcps_offer_option(OFFER_ROUTER, 0)
 void uart_send_break() {
   uart_wait_tx_done(0, 10);
+
   uint32_t baud;
   uart_get_baudrate(0, &baud); //save current baudrate
   uart_set_baudrate(0, baud/2); // set half the baudrate
@@ -490,6 +505,7 @@ int putc_remote(int c) {
 	return c;
 }
 
+extern void gdb_net_task();
 
 void app_main(void) {
 #if CONFIG_TARGET_UART
@@ -548,8 +564,10 @@ void app_main(void) {
 
 #endif
 
+  platform_init();
+
   xTaskCreate(&dbg_task, "dbg_main", 1024, NULL, 4, NULL);
-  xTaskCreate(&main, "bmp_main", 8192, NULL, 1, NULL);
+  xTaskCreate(&gdb_net_task, "gdb_net", 2048, NULL, 1, NULL);
 
 #if CONFIG_TARGET_UART
   xTaskCreate(&uart_rx_task, "uart_rx_task", 1200, NULL, 5, NULL);
@@ -559,7 +577,7 @@ void app_main(void) {
   ota_tftp_init_server(69, 4);
 
   ESP_LOGI(__func__, "Free heap %d\n", esp_get_free_heap_size());
-
+ 
 }
 
 #ifndef ENABLE_DEBUG

@@ -28,6 +28,9 @@
 #define SCNx32 "x"
 
 #include "esp_log.h"
+#include "esp_attr.h"
+#include "esp8266/pin_mux_register.h"
+#include "esp8266/gpio_struct.h"
 
 void platform_buffer_flush(void);
 void platform_set_baud(uint32_t baud);
@@ -66,9 +69,9 @@ void platform_set_baud(uint32_t baud);
 #define gpio_set_val(port, pin, value) 		gpio_set_level(pin, value);		
 
 #define gpio_enable(pin, mode) gpio_set_direction(pin, mode);
-#define gpio_set(port, pin) gpio_set_level(pin, 1);
-#define gpio_clear(port, pin) gpio_set_level(pin, 0);
-#define gpio_get(port, pin) gpio_get_level(pin)
+#define gpio_set(port, pin) GPIO.out_w1ts |= (0x1 << pin)
+#define gpio_clear(port, pin) GPIO.out_w1tc |= (0x1 << pin)
+#define gpio_get(port, pin) (GPIO.in >> pin) & 0x1
 
 #define GPIO_INPUT GPIO_MODE_INPUT
 #define GPIO_OUTPUT GPIO_MODE_OUTPUT
@@ -82,5 +85,7 @@ void platform_set_baud(uint32_t baud);
 	
 
 #define PLATFORM_HAS_DEBUG 
-#define BOARD_IDENT "esp8266"
+#define PLATFORM_IDENT "esp8266"
 #endif
+
+extern uint32_t swd_delay_cnt;
