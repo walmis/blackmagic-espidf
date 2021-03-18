@@ -92,7 +92,7 @@ public:
 		xTaskCreate([](void* arg) {
 			GDB_client* _this = (GDB_client*)arg;
 			_this->task();
-		}, "gdbc", 6000, this, 1, &pid);
+		}, "gdbc", 4000, this, 1, &pid);
 	}
 
 
@@ -101,10 +101,19 @@ public:
 		tls[0] = this;
 		vTaskSetThreadLocalStoragePointer(0, 0, tls); //used for exception handling
 		
-		ESP_LOGI("GDB_client", "Started task %d this:%p tlsp:%p", sock, this, tls);
+		ESP_LOGI("GDB_client", "Started task %d this:%p tlsp:%p mowner:%p", sock, this, tls, xQueueGetMutexHolder(gdb_mutex));
 
 		int opt = 1;
 		setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (void*)&opt, sizeof(opt));
+		opt = 1; /* SO_KEEPALIVE */
+		setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&opt, sizeof(opt));
+		opt = 3; /* s TCP_KEEPIDLE */
+		setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, (void*)&opt, sizeof(opt));
+		opt = 1; /* s TCP_KEEPINTVL */
+		setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&opt, sizeof(opt));
+		opt = 3; /* TCP_KEEPCNT */
+		setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, (void *)&opt, sizeof(opt));
+		opt = 1;
 
 		num_clients++;
 
@@ -161,7 +170,8 @@ private:
 		FD_SET(sock, &fds);
 		
 		if(select(sock+1, &fds, NULL, NULL, (timeout >= 0) ? &tv : NULL) > 0) {
-			return gdb_if_getchar();
+			char c = gdb_if_getchar();
+			return c;
 		}
 
 		return 0xFF;
@@ -177,7 +187,9 @@ private:
 			//should not be reached
 			return 0;
 		}
-
+		// if((tmp == '\x03') || (tmp == '\x04')) {
+		// 	ESP_LOGW(__func__, "Got Interrupt request");
+		// }
 		return tmp;
 	}
     void gdb_if_putchar(unsigned char c, int flush) {

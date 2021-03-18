@@ -53,7 +53,6 @@ enum gdb_signal {
 	GDB_SIGLOST = 29,
 };
 
-
 #define ERROR_IF_NO_TARGET()	\
 	GDB_LOCK(); if(!cur_target) { gdb_putpacketz("EFF"); break; }
 
@@ -120,6 +119,8 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 {
 	{
 		GDB_LOCK();
+
+
 		if(!cur_target && !last_target) {
 			ESP_LOGI("GDB", "Scanning SWD");
 			int devs = -1;
@@ -148,6 +149,7 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 
 	int size;
 	bool single_step = false;
+	bool run_state = false;
 	
 	/* GDB protocol main loop */
 	while(1) {
@@ -219,6 +221,7 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 			}
 			target_halt_resume(cur_target, single_step);
 			SET_RUN_STATE(1);
+			run_state = true;
 			single_step = false;
 		}
 			/* fall through */
@@ -235,7 +238,8 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 			}
 
 			/* Wait for target halt */
-			while(!(reason)) {
+			while(!(reason) && run_state) {
+				//ESP_LOGI("?", "Wait halt %d", reason);
 				{
 					GDB_LOCK();
 					if(!cur_target) {
@@ -248,9 +252,12 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 				unsigned char c = gdb_if_getchar_to(20);
 				if((c == '\x03') || (c == '\x04')) {
 					GDB_LOCK();
+					ESP_LOGW(__func__, "Interrupt request");
+
 					target_halt_request(cur_target);
 				}
 			}
+			ESP_LOGW("?", "halted %d", reason);
 			SET_RUN_STATE(0);
 
 			/* Translate reason to GDB signal */
@@ -269,7 +276,7 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 				gdb_putpacket_f("T%02X", GDB_SIGSEGV);
 				break;
 			case TARGET_HALT_RUNNING:
-				break;
+				//break;
 			default:
 				gdb_putpacket_f("T%02Xthread:0;", GDB_SIGTRAP);
 			}
