@@ -118,9 +118,6 @@ static bool cmd_reset(target *t, int argc, const char **argv) {
 
 int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 {
-	int size;
-	bool single_step = false;
-
 	{
 		GDB_LOCK();
 		if(!cur_target && !last_target) {
@@ -149,6 +146,9 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 		}
 	}
 
+	int size;
+	bool single_step = false;
+	
 	/* GDB protocol main loop */
 	while(1) {
 		SET_IDLE_STATE(1);
@@ -271,7 +271,7 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 			case TARGET_HALT_RUNNING:
 				break;
 			default:
-				gdb_putpacket_f("T%02X", GDB_SIGTRAP);
+				gdb_putpacket_f("T%02Xthread:0;", GDB_SIGTRAP);
 			}
 			break;
 			}
@@ -651,6 +651,7 @@ void GDB::gdb_main(void)
 
 extern "C"
 int gdb_main_loop(struct target_controller * tc, bool in_syscall) {
+	ESP_LOGI("C", "gdb_main_loop");
 	void** ptr = (void**)pvTaskGetThreadLocalStoragePointer(NULL, 0);
 	assert(ptr);
 	GDB* _this = (GDB*)ptr[0];

@@ -11,18 +11,28 @@ int gdb_main_loop(struct target_controller * tc, bool in_syscall);
 #undef DEBUG_GDB
 # define DEBUG_GDB(fmt, ...) ESP_LOGI("GDB" , fmt, ##__VA_ARGS__)
 
-class Lock {
-public:
-    Lock(xSemaphoreHandle sem) : sem(sem){
-        xSemaphoreTakeRecursive(sem, -1);
-    }
-    ~Lock() {
-        xSemaphoreGiveRecursive(sem);
-    }
-    xSemaphoreHandle sem;
-};
+void gdb_lock();
+void gdb_unlock();
+int gdb_breaklock();
+void gdb_restorelock(int state);
 
-extern xSemaphoreHandle gdb_mutex;
+struct GDBLock {
+    GDBLock(){
+        gdb_lock();
+    }
+    ~GDBLock() {
+        gdb_unlock();
+    }
+};
+struct GDBBreakLock {
+    GDBBreakLock() {
+        state = gdb_breaklock();
+    }
+    ~GDBBreakLock() {
+        gdb_restorelock(state);
+    }
+    int state;
+};
 
 class GDB {
 public:
@@ -56,4 +66,4 @@ protected:
     inline static  int num_clients;
 };
 
-#define GDB_LOCK() Lock l(gdb_mutex)
+#define GDB_LOCK() GDBLock gdb_lock

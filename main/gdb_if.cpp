@@ -44,11 +44,47 @@ extern "C" {
 
 #include "gdb_if.hpp"
 
-xSemaphoreHandle gdb_mutex;
+static xSemaphoreHandle gdb_mutex;
+static int gdb_mutex_lockcount;
+
+void gdb_lock() {
+	if(xSemaphoreGetMutexHolder(gdb_mutex) == xTaskGetCurrentTaskHandle()) {
+		gdb_mutex_lockcount++;
+	} else {
+		xSemaphoreTake(gdb_mutex, -1);
+		gdb_mutex_lockcount++;
+	}
+}
+void gdb_unlock() {
+	if(xSemaphoreGetMutexHolder(gdb_mutex) == xTaskGetCurrentTaskHandle()) {
+		gdb_mutex_lockcount--;
+		if(gdb_mutex_lockcount == 0) {
+			xSemaphoreGive(gdb_mutex);
+		}
+	}
+
+}
+int gdb_breaklock() {
+	if(xSemaphoreGetMutexHolder(gdb_mutex) == xTaskGetCurrentTaskHandle()) {
+		int state = gdb_mutex_lockcount;
+		gdb_mutex_lockcount = 0;
+		xSemaphoreGive(gdb_mutex);
+		return state;
+	} else {
+		//ESP_LOGE("gdb_breaklock", "we're not the owner");
+		return 0;
+	}
+}
+void gdb_restorelock(int state) {
+	if(state == 0) {
+		//ESP_LOGE("gdb_restorelock", "state 0");
+	} else {
+		xSemaphoreTake(gdb_mutex, -1);
+		gdb_mutex_lockcount = state;
+	}
+}
+
 static int gdb_if_serv;
-
-
-
 
 class GDB_client : public GDB {
 public:
@@ -81,6 +117,7 @@ public:
 				gdb_putpacketz("EFF");
 				GDB_LOCK();
 				target_list_free();
+				ESP_LOGI("Exception", "TARGET LOST e.type:%d", e.type);
 				//morse("TARGET LOST.", 1);
 			}
 		}
@@ -101,6 +138,7 @@ private:
 		ESP_LOGI("GDB_client", "destroy %d", sock);
 		num_clients--;
 
+		gdb_breaklock();
 		close(sock);
 
 		xTimerPendFunctionCall([](void * _this, uint32_t ulParameter2) {
@@ -111,6 +149,8 @@ private:
 	}
 
 	unsigned char gdb_if_getchar_to(int timeout) {
+		GDBBreakLock brk;
+
 		fd_set fds;
 		struct timeval tv;
 
@@ -119,7 +159,7 @@ private:
 
 		FD_ZERO(&fds);
 		FD_SET(sock, &fds);
-
+		
 		if(select(sock+1, &fds, NULL, NULL, (timeout >= 0) ? &tv : NULL) > 0) {
 			return gdb_if_getchar();
 		}
@@ -166,7 +206,7 @@ void gdb_net_task(void* arg) {
 	struct sockaddr_in addr;
 	int opt;
 
-	gdb_mutex = xSemaphoreCreateRecursiveMutex();
+	gdb_mutex = xSemaphoreCreateMutex();
 
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(2022);
