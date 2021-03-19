@@ -528,7 +528,7 @@ void app_main(void) {
 #else
   wifi_init_softap();
 
-  esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G);
+  esp_wifi_set_protocol(WIFI_IF_AP, /*WIFI_PROTOCOL_11B |*/ WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N);
 #endif
 
   //esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B);
