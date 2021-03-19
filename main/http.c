@@ -19,6 +19,7 @@
 #include <semphr.h>
 #include <queue.h>
 #include "platform.h"
+#include "hashmap.h"
 
 extern char _binary_image_espfs_start[] ;
 extern void platform_set_baud(uint32_t);
@@ -110,6 +111,21 @@ extern uint32_t uart_queue_full_cnt;
 extern uint32_t uart_rx_count;
 extern uint32_t uart_tx_count;
 
+static int task_status_cmp(const void * a, const void * b) {
+  TaskStatus_t* ta = (TaskStatus_t*)a;
+  TaskStatus_t* tb = (TaskStatus_t*)b;
+  return ta->xTaskNumber - tb->xTaskNumber;
+}
+
+static const char* const task_state_name[] = {
+	"eRunning",	/* A task is querying the state of itself, so must be running. */
+	"eReady",			/* The task being queried is in a read or pending ready list. */
+	"eBlocked",		/* The task being queried is in the Blocked state. */
+	"eSuspended",		/* The task being queried is in the Suspended state, or is in the Blocked state with an infinite time out. */
+	"eDeleted",		/* The task being queried has been deleted, but its TCB has not yet been freed. */
+	"eInvalid"			/* Used as an 'invalid state' value. */
+};
+
 CgiStatus cgi_status(HttpdConnData *connData) {
   int len;
   char buff[256];
@@ -119,23 +135,30 @@ CgiStatus cgi_status(HttpdConnData *connData) {
     return HTTPD_CGI_DONE;
   }
 
+  static hashmap* task_times;
+  if(!task_times) {
+    task_times = hashmap_new();
+  } 
+
   uint32_t baud = 0;
   uart_get_baudrate(0, &baud);
 
-  len = snprintf(buff, sizeof(buff), "{\"free_heap\": %u,\n"
-                                      "\"baud_rate\": %d,\n"
-                                      "\"uart_overruns\": %d\n"
-                                      "\"uart_errors\": %d\n"
-                                      "\"uart_rx_full_cnt\": %d\n"
-                                      "\"uart_rx_count\": %d\n"
-                                      "\"uart_tx_count\": %d\n"
-                                      "\"tasks\": [\n", esp_get_free_heap_size(), baud, uart_overrun_cnt, uart_errors,
+  len = snprintf(buff, sizeof(buff), "free_heap: %u,\n"
+                                      "baud_rate: %d,\n"
+                                      "uart_overruns: %d\n"
+                                      "uart_errors: %d\n"
+                                      "uart_rx_full_cnt: %d\n"
+                                      "uart_rx_count: %d\n"
+                                      "uart_tx_count: %d\n"
+                                      "tasks:\n", esp_get_free_heap_size(), baud, uart_overrun_cnt, uart_errors,
                                       uart_queue_full_cnt, uart_rx_count, uart_tx_count);
 
 
   httpdStartResponse(connData, 200);
   httpdHeader(connData, "Cache-Control", "no-store, must-revalidate, no-cache, max-age=0");
-  httpdHeader(connData, "Content-Type", "text/json");
+  httpdHeader(connData, "Content-Type", "text/plain");
+  httpdHeader(connData, "Refresh", "1");
+
   httpdEndHeaders(connData);
 
   httpdSend(connData, buff, len);
@@ -144,18 +167,30 @@ CgiStatus cgi_status(HttpdConnData *connData) {
   int uxArraySize = uxTaskGetNumberOfTasks();
   TaskStatus_t* pxTaskStatusArray = malloc( uxArraySize * sizeof( TaskStatus_t ) );
   uint32_t total_runtime;
+  uint32_t tmp;
+  static uint32_t last_total_runtime;
   if( pxTaskStatusArray != NULL )
   {
     /* Generate the (binary) data. */
     uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &total_runtime );
+    tmp = total_runtime;
+    total_runtime = total_runtime - last_total_runtime;
+    last_total_runtime = tmp;
     total_runtime /= 100;
     if(total_runtime == 0) total_runtime = 1;
+
+    qsort(pxTaskStatusArray, uxArraySize, sizeof(TaskStatus_t), task_status_cmp);
 
     for(int i = 0; i < uxArraySize; i++) {
       TaskStatus_t* tsk = &pxTaskStatusArray[i];
 
-      len = snprintf(buff, sizeof(buff), "\t{\"id\": %u, \"name\": %s, \"prio\": %u, \"state\": %d, \"stack_hwm\": %u, \"cpu\": \"%d%%\" },\n",
-          tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority, tsk->eCurrentState, tsk->usStackHighWaterMark, tsk->ulRunTimeCounter / total_runtime);
+      uint32_t last_task_time = tsk->ulRunTimeCounter;
+      hashmap_get(task_times, tsk->xTaskNumber, &last_task_time);
+      hashmap_set(task_times, tsk->xTaskNumber, tsk->ulRunTimeCounter);
+      tsk->ulRunTimeCounter -= last_task_time;
+
+      len = snprintf(buff, sizeof(buff), "\tid: %4u, name: %16s, prio: %3u, state: %8s, stack_hwm: %4u, cpu: %d%%\n",
+          tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority, task_state_name[tsk->eCurrentState], tsk->usStackHighWaterMark, tsk->ulRunTimeCounter / total_runtime);
 
 
       httpdSend(connData, buff, len);
@@ -165,7 +200,7 @@ CgiStatus cgi_status(HttpdConnData *connData) {
 
   free(pxTaskStatusArray);
 
-  len = snprintf(buff, sizeof(buff), "]\n}\n");
+  len = snprintf(buff, sizeof(buff), "\n");
   httpdSend(connData, buff, len);
 
 
