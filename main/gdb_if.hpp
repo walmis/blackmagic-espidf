@@ -8,9 +8,6 @@ extern "C" {
 int gdb_main_loop(struct target_controller * tc, bool in_syscall);
 }
 
-#undef DEBUG_GDB
-# define DEBUG_GDB(fmt, ...) ESP_LOGI("GDB" , fmt, ##__VA_ARGS__)
-
 void gdb_lock();
 void gdb_unlock();
 int gdb_breaklock();
@@ -44,8 +41,10 @@ public:
     virtual unsigned char gdb_if_getchar_to(int timeout) = 0;
 
     int gdb_getpacket(char *packet, int size);
-    void gdb_putpacket(const char *packet, int size);
+    void gdb_putpacket(const char *packet, int size, char pktstart = '$');
     void gdb_putpacket_f(const char *fmt, ...);
+    void gdb_putnotifpacket_f(const char *fmt, ...);
+
     void gdb_out(const char *buf);
     void gdb_voutf(const char *fmt, va_list ap);
     void gdb_outf(const char *fmt, ...);
@@ -61,9 +60,10 @@ protected:
     void handle_q_string_reply(const char *str, const char *param);
 
     char pbuf[BUF_SIZE+1];
-    bool non_stop;
+    bool non_stop = 0;
+    bool no_ack_mode = 0;
 
-    inline static  int num_clients;
+    inline static  int num_clients = 0;
 };
 
 #define GDB_LOCK() GDBLock gdb_lock

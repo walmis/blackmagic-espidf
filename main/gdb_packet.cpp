@@ -49,8 +49,11 @@ int GDB::gdb_getpacket(char *packet, int size)
              * start ('$') or a BMP remote packet start ('!').
 			 */
 			do {
-				packet[0] = gdb_if_getchar();
+				packet[0] = gdb_if_getchar_to(20);
+				if(packet[0] == 0xFF) return 0;
+
 				if (packet[0]==0x04) return 1;
+				if (packet[0]==0x03) return 1;
 			} while ((packet[0] != '$') && (packet[0] != REMOTE_SOM));
 #if PC_HOSTED == 0
 			if (packet[0]==REMOTE_SOM) {
@@ -125,9 +128,11 @@ int GDB::gdb_getpacket(char *packet, int size)
 		if(csum == strtol(recv_csum, NULL, 16)) break;
 
 		/* get here if checksum fails */
-		gdb_if_putchar('-', 1); /* send nack */
+		if(!no_ack_mode)
+			gdb_if_putchar('-', 1); /* send nack */
 	}
-	gdb_if_putchar('+', 1); /* send ack */
+	if(!no_ack_mode)
+		gdb_if_putchar('+', 1); /* send ack */
 	packet[i] = 0;
 
 #if PC_HOSTED == 1
@@ -144,7 +149,7 @@ int GDB::gdb_getpacket(char *packet, int size)
 	return i;
 }
 
-void GDB::gdb_putpacket(const char *packet, int size)
+void GDB::gdb_putpacket(const char *packet, int size, char pktstart)
 {
 	int i;
 	unsigned char csum;
@@ -155,7 +160,7 @@ void GDB::gdb_putpacket(const char *packet, int size)
 	do {
 		DEBUG_GDB_WIRE("%s : ", __func__);
 		csum = 0;
-		gdb_if_putchar('$', 0);
+		gdb_if_putchar(pktstart, 0);
 		for(i = 0; i < size; i++) {
 			c = packet[i];
 #if PC_HOSTED == 1
@@ -178,7 +183,7 @@ void GDB::gdb_putpacket(const char *packet, int size)
 		gdb_if_putchar(xmit_csum[0], 0);
 		gdb_if_putchar(xmit_csum[1], 1);
 		DEBUG_GDB_WIRE("\n");
-	} while((gdb_if_getchar_to(2000) != '+') && (tries++ < 3));
+	} while(!no_ack_mode && (gdb_if_getchar_to(2000) != '+') && (tries++ < 3));
 }
 
 void GDB::gdb_putpacket_f(const char *fmt, ...)
@@ -190,6 +195,18 @@ void GDB::gdb_putpacket_f(const char *fmt, ...)
 	va_start(ap, fmt);
 	size = vasprintf(&buf, fmt, ap);
 	gdb_putpacket(buf, size);
+	free(buf);
+	va_end(ap);
+}
+void GDB::gdb_putnotifpacket_f(const char *fmt, ...)
+{
+	va_list ap;
+	char *buf;
+	int size;
+
+	va_start(ap, fmt);
+	size = vasprintf(&buf, fmt, ap);
+	gdb_putpacket(buf, size, '%');
 	free(buf);
 	va_end(ap);
 }

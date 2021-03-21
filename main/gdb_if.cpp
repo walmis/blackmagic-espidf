@@ -295,6 +295,15 @@ void gdb_outf(const char *fmt, ...) {
 }
 
 extern "C"
+void gdb_putpacket(const char *packet, int size) {
+	void** ptr = (void**)pvTaskGetThreadLocalStoragePointer(NULL, 0);
+	assert(ptr);
+	GDB* _this = (GDB*)ptr[0];
+	_this->gdb_putpacket_f(packet, size);
+}
+
+
+extern "C"
 void gdb_putpacket_f(const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);

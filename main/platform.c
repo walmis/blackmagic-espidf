@@ -62,15 +62,22 @@
 #include "ota-tftp.h"
 
 uint32_t swd_delay_cnt;
+#define SWD_CYCLES_PER_CLOCK 19L
+#define SWD_TOTAL_CYCLES 127L
 
 void platform_max_frequency_set(uint32_t freq)
 {
-	(void)freq;
+	if(!freq) return;
+  int cnt = (160000000L - SWD_TOTAL_CYCLES*(int)freq)/(SWD_CYCLES_PER_CLOCK*(int)freq);
+  if(cnt < 0) cnt = 0;
+  swd_delay_cnt = cnt;
+  ESP_LOGI(__func__, "freq:%u set delay cycles: %d", freq, swd_delay_cnt);
+
 }
 
 uint32_t platform_max_frequency_get(void)
 {
-	return 0;
+	return 160000000 / (swd_delay_cnt*SWD_CYCLES_PER_CLOCK+SWD_TOTAL_CYCLES);
 }
 
 nvs_handle h_nvs_conf;
@@ -528,7 +535,7 @@ void app_main(void) {
 #else
   wifi_init_softap();
 
-  esp_wifi_set_protocol(WIFI_IF_AP, /*WIFI_PROTOCOL_11B |*/ WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N);
+  esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11N );
 #endif
 
   //esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B);

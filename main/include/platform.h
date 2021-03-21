@@ -40,7 +40,7 @@ void platform_set_baud(uint32_t baud);
 #define SET_ERROR_STATE(state)
 
 #define ENABLE_DEBUG
-#define DEBUG(x, ...) do { ESP_LOGD("BMP", x, ##__VA_ARGS__); } while (0)
+#define DEBUG(x, ...) do { TRIM(out, x); ESP_LOGD("BMP", out, ##__VA_ARGS__); } while (0)
 
 
 #include "timing.h"

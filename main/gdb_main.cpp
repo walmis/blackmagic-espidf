@@ -37,14 +37,12 @@ extern "C" {
 #include "morse.h"
 #include "exception.h"
 #include "target/adiv5.h"
+#include "target/cortexm.h"
 #include "target/target_internal.h"
 }
 
 #include "gdb_if.hpp"
 #include "task.h"
-
-#undef DEBUG_GDB
-# define DEBUG_GDB(fmt, ...) ESP_LOGI("GDB" ,"%d " fmt, fileno(), ##__VA_ARGS__)
 
 enum gdb_signal {
 	GDB_SIGINT = 2,
@@ -58,6 +56,8 @@ enum gdb_signal {
 
 static target *cur_target;
 static target *last_target;
+static bool single_step = false;
+static bool run_state = false;
 
 static void gdb_target_destroy_callback(struct target_controller *tc, target *t)
 {
@@ -114,6 +114,40 @@ static bool cmd_reset(target *t, int argc, const char **argv) {
 	return true;
 }
 
+static bool cmd_write_dp(target *t, int argc, const char **argv) {
+	char* buf = "O.K.\n";
+	int i;
+	char hexdata[((i = strlen(buf)*2 + 1) + 1)];
+	hexify(hexdata, buf, strlen(buf));
+	gdb_putpacket(hexdata, i);
+
+	uint32_t addr = strtoul(argv[1], 0, 16);
+	uint32_t val = strtoul(argv[2], 0, 16);
+	ADIv5_AP_t *ap = cortexm_ap(cur_target);
+	//adiv5_dp_write(ap->dp, addr, val);
+
+	return 255;
+}
+
+static bool cmd_read_ap(target *t, int argc, const char **argv) {
+	if(!cur_target) {
+		return false;
+	}
+	ADIv5_AP_t *ap = cortexm_ap(cur_target);
+	uint32_t addr = strtoul(argv[1], 0, 16);
+	ESP_LOGI(__func__, "addr: %x", addr);
+	uint32_t reg = adiv5_dp_read(ap->dp, ADIV5_AP_BASE);
+
+	char* buf;
+	//O.K.:0xe00ff003
+	asprintf(&buf, "O.K.:0x%08x\n", reg);
+	int i;
+	char hexdata[((i = strlen(buf)*2 + 1) + 1)];
+	hexify(hexdata, buf, strlen(buf));
+	gdb_putpacket(hexdata, i);
+	free(buf);
+	return 255;
+}
 
 int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 {
@@ -131,7 +165,13 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 				if(devs > 0) {
 					cur_target = target_attach_n(1, &gdb_controller);
 					if(cur_target) {
-						static const struct command_s cmds[]  = { {"reset", cmd_reset, "OpenOCD style target reset: reset [init halt run]"}, {0,0,0} };
+						static const struct command_s cmds[]  = { 
+							{"reset", cmd_reset, "OpenOCD style target reset: reset [init halt run]"}, 
+							{"WriteDP", cmd_write_dp, "STLINK helper"},
+							{"ReadAP", cmd_read_ap, "STLINK helper"},
+
+							{0,0,0} 
+						};
 						target_add_commands(cur_target, cmds, "Target");
 					}
 				}
@@ -148,13 +188,71 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 	}
 
 	int size;
-	bool single_step = false;
-	bool run_state = false;
-	
+
 	/* GDB protocol main loop */
 	while(1) {
 		SET_IDLE_STATE(1);
 		size = gdb_getpacket(pbuf, BUF_SIZE);
+		if(size == 0) {
+			GDB_LOCK();
+			if(run_state && cur_target) {
+				target_addr watch;
+				enum target_halt_reason reason = TARGET_HALT_RUNNING;
+				reason = target_halt_poll(cur_target, &watch);
+
+				if(non_stop) {
+					// if(reason)
+					// 	DEBUG_GDB("send state %d", reason);
+					switch (reason) {
+					case TARGET_HALT_ERROR:
+						gdb_putnotifpacket_f("Stop:X%02Xthread:1;core:0;", GDB_SIGLOST);
+						break;
+					case TARGET_HALT_REQUEST:
+						gdb_putnotifpacket_f("Stop:T%02Xthread:1;core:0;", GDB_SIGINT);
+						break;
+					case TARGET_HALT_WATCHPOINT:
+						gdb_putnotifpacket_f("Stop:T%02Xthread:1;core:0;watch:%08X;", GDB_SIGTRAP, watch);
+						break;
+					case TARGET_HALT_FAULT:
+						gdb_putnotifpacket_f("Stop:T%02Xthread:1;core:0;", GDB_SIGSEGV);
+						break;
+					case TARGET_HALT_RUNNING:
+						break;
+					default:
+						gdb_putnotifpacket_f("Stop:T%02Xthread:1;core:0;", GDB_SIGTRAP);
+						break;
+					}		
+					
+				} else {
+					switch (reason) {
+					case TARGET_HALT_ERROR:
+						gdb_putpacket_f("X%02X", GDB_SIGLOST);
+						break;
+					case TARGET_HALT_REQUEST:
+						gdb_putpacket_f("T%02X", GDB_SIGINT);
+						break;
+					case TARGET_HALT_WATCHPOINT:
+						gdb_putpacket_f("T%02Xwatch:%08X;", GDB_SIGTRAP, watch);
+						break;
+					case TARGET_HALT_FAULT:
+						gdb_putpacket_f("T%02X", GDB_SIGSEGV);
+						break;
+					case TARGET_HALT_RUNNING:
+						break;
+					default:
+						gdb_putpacket_f("T%02Xthread:1;core:0;", GDB_SIGTRAP);
+						break;
+					}
+				}
+				if(run_state && reason != TARGET_HALT_RUNNING) {
+					run_state = false;
+					single_step = false;
+				} 
+
+			}
+
+			continue;
+		} 
 		SET_IDLE_STATE(0);
 		switch(pbuf[0]) {
 		/* Implementation of these is mandatory! */
@@ -166,6 +264,9 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 			              sizeof(arm_regs) * 2);
 			break;
 			}
+		case 'T': //thread select
+			gdb_putpacketz("OK");
+			break;
 		case 'm': {	/* 'm addr,len': Read len bytes from addr */
 			uint32_t addr, len;
 			ERROR_IF_NO_TARGET();
@@ -191,6 +292,9 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 			gdb_putpacketz("OK");
 			break;
 			}
+		case 'H': //select thread: Hc0, Hg-1
+			gdb_putpacketz("OK");
+			break;
 		case 'M': { /* 'M addr,len:XX': Write len bytes to addr */
 			uint32_t addr, len;
 			int hex;
@@ -210,9 +314,13 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 				gdb_putpacketz("OK");
 			break;
 			}
+		case 'S':
+			/* fall through */
 		case 's':	/* 's [addr]': Single step [start at addr] */
 			single_step = true;
 			/* fall through */
+		case 'C':
+		/* fall through */
 		case 'c': {	/* 'c [addr]': Continue [at addr] */
 			GDB_LOCK();
 			if(!cur_target) {
@@ -220,16 +328,25 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 				break;
 			}
 			target_halt_resume(cur_target, single_step);
-			SET_RUN_STATE(1);
 			run_state = true;
-			single_step = false;
+			SET_RUN_STATE(1);
+			break;
 		}
-			/* fall through */
+		case 0x03: {
+			{
+				DEBUG_GDB("Interrupt :%d", pbuf[0]);
+				GDB_LOCK();
+				run_state = true;
+				target_halt_request(cur_target);
+			}
+			break;
+		}
 		case '?': {	/* '?': Request reason for target halt */
 			/* This packet isn't documented as being mandatory,
 			 * but GDB doesn't work without it. */
 			target_addr watch;
 			enum target_halt_reason reason = TARGET_HALT_RUNNING;
+			GDB_LOCK();
 
 			if(!cur_target) {
 				/* Report "target exited" if no target */
@@ -238,10 +355,9 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 			}
 
 			/* Wait for target halt */
-			while(!(reason) && run_state) {
+			// while(!(reason) && run_state) {
 				//ESP_LOGI("?", "Wait halt %d", reason);
 				{
-					GDB_LOCK();
 					if(!cur_target) {
 						/* Report "target exited" if no target */
 						gdb_putpacketz("W00");
@@ -249,14 +365,14 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 					}
 					reason = target_halt_poll(cur_target, &watch);
 				}
-				unsigned char c = gdb_if_getchar_to(20);
-				if((c == '\x03') || (c == '\x04')) {
-					GDB_LOCK();
-					ESP_LOGW(__func__, "Interrupt request");
+				// unsigned char c = gdb_if_getchar_to(20);
+				// if((c == '\x03') || (c == '\x04')) {
+					// GDB_LOCK();
+					// ESP_LOGW(__func__, "Interrupt request");
 
-					target_halt_request(cur_target);
-				}
-			}
+					// target_halt_request(cur_target);
+				// }
+			// }
 			ESP_LOGW("?", "halted %d", reason);
 			SET_RUN_STATE(0);
 
@@ -276,9 +392,10 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 				gdb_putpacket_f("T%02X", GDB_SIGSEGV);
 				break;
 			case TARGET_HALT_RUNNING:
-				//break;
+				gdb_putpacket_f("T%02Xthread:1;core:0;", 0);
+				break;
 			default:
-				gdb_putpacket_f("T%02Xthread:0;", GDB_SIGTRAP);
+				gdb_putpacket_f("T%02Xthread:1;core:0;", GDB_SIGTRAP);
 			}
 			break;
 			}
@@ -398,10 +515,12 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 			handle_z_packet(pbuf, size);
 			break;
 		}
-		default: 	{/* Packet not implemented */
+		default: 	{
 			int val;
-
-			if (sscanf(pbuf, "QNonStop:%d", &val) == 1) {
+			if (!strcmp(pbuf, "QStartNoAckMode")) {
+				no_ack_mode = true;
+				gdb_putpacketz("OK");
+			} else if (sscanf(pbuf, "QNonStop:%d", &val) == 1) {
 				non_stop = val;
 				gdb_putpacketz("OK");
 			} else {
@@ -452,16 +571,24 @@ GDB::handle_q_packet(char *packet, int len)
 		data[datalen] = 0;	/* add terminating null */
 		ESP_LOGI("CMD", "%s", data);
 		int c = command_process(cur_target, data);
+		if(!strcmp(data, "ReadAP") || !strcmp(data, "WriteDP")) {
+			return;
+		}
 		if(c < 0)
 			gdb_putpacketz("");
 		else if(c == 0)
 			gdb_putpacketz("OK");
+		else if(c == 255) {}
 		else
 			gdb_putpacketz("E");
 
 	} else if (!strncmp (packet, "qSupported", 10)) {
 		/* Query supported protocol features */
-		gdb_putpacket_f("PacketSize=%X;qXfer:memory-map:read+;qXfer:features:read+;QNonStop+", BUF_SIZE);
+		gdb_putpacket_f("PacketSize=%X;qXfer:memory-map:read+;qXfer:features:read+;QNonStop+;QStartNoAckMode+;qXfer:threads:read+", BUF_SIZE);
+	} else if (strncmp (packet, "qXfer:threads:read::", 20) == 0) {
+		gdb_putpacket_f("l<?xml version=\"1.0\"?><threads><thread id=\"1\" core=\"0\" name=\"main\"></thread></threads>");
+	} else if (strncmp (packet, "qAttached", 9) == 0) {
+		gdb_putpacket_f("%d", !!cur_target);
 
 	} else if (strncmp (packet, "qXfer:memory-map:read::", 23) == 0) {
 		GDB_LOCK();
@@ -579,14 +706,14 @@ GDB::handle_v_packet(char *packet, int plen)
 
 	} else if (sscanf(packet, "vFlashErase:%08lx,%08lx", &addr, &len) == 2) {
 		GDB_LOCK();
-
 		/* Erase Flash Memory */
-		DEBUG_GDB("Flash Erase %08lX %08lX\n", addr, len);
+		DEBUG_GDB("Flash Erase %08lX len:%d\n", addr, len);
 		if(!cur_target) { gdb_putpacketz("EFF"); return; }
 		if(!flash_mode) {
 			/* Reset target if first flash command! */
 			/* This saves us if we're interrupted in IRQ context */
 			target_reset(cur_target);
+			target_halt_request(cur_target);
 			flash_mode = 1;
 		}
 		if(target_flash_erase(cur_target, addr, len) == 0) {
@@ -598,15 +725,47 @@ GDB::handle_v_packet(char *packet, int plen)
 
 	} else if (sscanf(packet, "vFlashWrite:%08lx:%n", &addr, &bin) == 1) {
 		/* Write Flash Memory */
+		//DEBUG_GDB("plen: %d(%x) %d", plen, plen, bin);
 		GDB_LOCK();
 		len = plen - bin;
-		DEBUG_GDB("Flash Write %08lX %08lX\n", addr, len);
-		if(cur_target && target_flash_write(cur_target, addr, (void*)packet + bin, len) == 0) {
+		DEBUG_GDB("Flash Write %08lX len:%d\n", addr, len);
+		//ESP_LOG_BUFFER_HEXDUMP("Flash", packet+bin, len, 3);
+		if(cur_target && target_flash_write(cur_target, addr, (void*)(packet + bin), len) == 0) {
 			gdb_putpacketz("OK");
 		} else {
 			flash_mode = 0;
 			gdb_putpacketz("EFF");
 		}
+	} else if (!strncmp(packet, "vCont", 5)) {
+		GDB_LOCK();
+		char* c = packet+5;
+		if(*c == ';') c++;
+		if(*c == '?') {
+			gdb_putpacketz("vCont;c;s;t");
+			return;
+		}
+		if(!cur_target) { gdb_putpacketz("EFF"); return; }
+		single_step = false;
+		while(*c) {
+			switch(*c) {
+				case 'c': //continue
+					run_state = true;
+					DEBUG_GDB("vCont: resume (single_step:%d)", single_step);
+					target_halt_resume(cur_target, single_step);
+					break;
+				case 't': //stop
+					DEBUG_GDB("vCont: halt");
+					target_halt_request(cur_target);
+					run_state = true;
+					break;
+				case 's': //step
+					run_state = true;
+					single_step = true;
+					break;
+			}
+			c++;
+		}
+		gdb_putpacketz("OK");
 
 	} else if (!strcmp(packet, "vFlashDone")) {
 		/* Commit flash operations. */
