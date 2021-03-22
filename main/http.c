@@ -144,14 +144,16 @@ CgiStatus cgi_status(HttpdConnData *connData) {
   uart_get_baudrate(0, &baud);
 
   len = snprintf(buff, sizeof(buff), "free_heap: %u,\n"
+                                     "uptime: %d ms\n" 
                                       "baud_rate: %d,\n"
                                       "uart_overruns: %d\n"
                                       "uart_errors: %d\n"
                                       "uart_rx_full_cnt: %d\n"
                                       "uart_rx_count: %d\n"
                                       "uart_tx_count: %d\n"
-                                      "tasks:\n", esp_get_free_heap_size(), baud, uart_overrun_cnt, uart_errors,
-                                      uart_queue_full_cnt, uart_rx_count, uart_tx_count);
+                                      "tasks:\n", esp_get_free_heap_size(), xTaskGetTickCount() * portTICK_PERIOD_MS,
+                                       baud, uart_overrun_cnt, uart_errors,
+                                       uart_queue_full_cnt, uart_rx_count, uart_tx_count);
 
 
   httpdStartResponse(connData, 200);
