@@ -28,6 +28,7 @@
 #include "gdb_packet.h"
 #include "morse.h"
 #include "platform.h"
+#include "CBUF.h"
 
 #include <assert.h>
 #include <sys/time.h>
@@ -94,7 +95,14 @@ int tcp_client_sock = 0;
 
 static xQueueHandle uart_event_queue;
 static struct sockaddr_in udp_peer_addr;
-static xQueueHandle dbg_msg_queue;
+
+struct
+{
+  volatile uint8_t     m_get_idx;
+  volatile uint8_t     m_put_idx;
+  uint8_t              m_entry[ 256 ];
+  SemaphoreHandle_t    sem;
+} dbg_msg_queue;
 
 #define IS_GPIO_USED(x) \
     CONFIG_TMS_SWDIO_GPIO==x || \
@@ -302,37 +310,25 @@ void uart_rx_task(void *parameters) {
 
 
 void dbg_task(void *parameters) {
-	dbg_msg_queue = xQueueCreate(1024, 1);
 	//struct netconn* nc = netconn_new(NETCONN_UDP);
 	//ip_addr_t ip;
 	//IP_ADDR4(&ip, 192, 168, 4, 255);
 
 	while(1) {
+    xSemaphoreTake(dbg_msg_queue.sem, -1);
 
-		char tmp;
-		if(xQueuePeek(dbg_msg_queue, &tmp, 10)) {
-			struct netbuf* nb = netbuf_new();
-
-			int waiting = uxQueueMessagesWaiting(dbg_msg_queue);
-			char* mem = netbuf_alloc(nb, waiting);
-
-			while(waiting--) {
-				xQueueReceive(dbg_msg_queue, mem, 0);
-				http_debug_putc(*mem, *mem=='\n' ? 1 : 0);
-				mem++;
-			}
-			//netconn_sendto(nc, nb, &ip, 6666);
-
-			netbuf_delete(nb);
-		}
-
+    while(!CBUF_IsEmpty(dbg_msg_queue)) {
+      char c = CBUF_Pop(dbg_msg_queue);
+      http_debug_putc(c, c=='\n' ? 1 : 0);
+    }
 	}
 }
 
 void debug_putc(char c, int flush) {
-	if(dbg_msg_queue) {
-		xQueueSend(dbg_msg_queue, &c, 0);
-	}
+  CBUF_Push(dbg_msg_queue, c);
+  if(flush) {
+    xSemaphoreGive(dbg_msg_queue.sem);
+  }
 }
 
 void platform_set_baud(uint32_t baud) {
@@ -543,6 +539,9 @@ void app_main(void) {
   httpd_start();
 
   esp_wifi_set_ps (WIFI_PS_NONE);
+
+  CBUF_Init(dbg_msg_queue);
+  dbg_msg_queue.sem = xSemaphoreCreateBinary();
 
 #if CONFIG_TARGET_UART
   ESP_LOGI(__func__, "configuring uart for target");
