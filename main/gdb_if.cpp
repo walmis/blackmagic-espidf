@@ -89,10 +89,13 @@ static int gdb_if_serv;
 class GDB_client : public GDB {
 public:
 	GDB_client(int sock) : sock(sock) {
+		char name[32];
+		snprintf(name, 32, "gdbc fd:%d", sock);
+
 		xTaskCreate([](void* arg) {
 			GDB_client* _this = (GDB_client*)arg;
 			_this->task();
-		}, "gdbc", 4000, this, 1, &pid);
+		}, name, 3500, this, 1, &pid);
 	}
 
 
