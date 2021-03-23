@@ -154,7 +154,6 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 	{
 		GDB_LOCK();
 
-
 		if(!cur_target && !last_target) {
 			ESP_LOGI("GDB", "Scanning SWD");
 			int devs = -1;
@@ -205,7 +204,8 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 					// 	DEBUG_GDB("send state %d", reason);
 					switch (reason) {
 					case TARGET_HALT_ERROR:
-						gdb_putnotifpacket_f("Stop:X%02Xthread:1;core:0;", GDB_SIGLOST);
+						DEBUG_WARN("target_halt_poll = TARGET_HALT_ERROR");
+						gdb_putnotifpacket_f("Stop:X%02X", GDB_SIGLOST);
 						break;
 					case TARGET_HALT_REQUEST:
 						gdb_putnotifpacket_f("Stop:T%02Xthread:1;core:0;", GDB_SIGINT);
@@ -278,9 +278,10 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 			DEBUG_GDB("m packet: addr = %" PRIx32 ", len = %" PRIx32 "\n",
 					  addr, len);
 			uint8_t mem[len];
-			if (target_mem_read(cur_target, mem, addr, len))
+			if (target_mem_read(cur_target, mem, addr, len)) {
+				DEBUG_WARN("target_mem_read error");
 				gdb_putpacketz("E01");
-			else
+			} else
 				gdb_putpacket(hexify(pbuf, mem, len), len*2);
 			break;
 			}

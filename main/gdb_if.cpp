@@ -86,6 +86,14 @@ void gdb_restorelock(int state) {
 
 static int gdb_if_serv;
 
+extern "C"
+struct exception** get_innermost_exception() {
+    void** ptr = (void**)pvTaskGetThreadLocalStoragePointer(NULL, 0);
+	//ESP_LOGI("EX", "exceptiongot ptr %p %p %p", ptr, ptr[0], ptr[1]);
+    assert(ptr);
+    return (exception**)&ptr[1];
+}
+
 class GDB_client : public GDB {
 public:
 	GDB_client(int sock) : sock(sock) {
