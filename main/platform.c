@@ -68,7 +68,7 @@ uint32_t swd_delay_cnt;
 
 void platform_max_frequency_set(uint32_t freq)
 {
-	if(!freq) return;
+	if(freq < 50000) return;
   int cnt = (160000000L - SWD_TOTAL_CYCLES*(int)freq)/(SWD_CYCLES_PER_CLOCK*(int)freq);
   if(cnt < 0) cnt = 0;
   swd_delay_cnt = cnt;
