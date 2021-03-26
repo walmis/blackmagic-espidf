@@ -23,6 +23,7 @@
 #include "general.h"
 #include "swdptap.h"
 #include "timing.h"
+#include "FreeRTOS.h"
 
 enum {
 	SWDIO_STATUS_FLOAT = 0,
@@ -34,13 +35,12 @@ static IRAM_ATTR bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
 	__attribute__ ((optimize(3)));
 static IRAM_ATTR void swdptap_seq_out(uint32_t MS, int ticks)
 	__attribute__ ((optimize(3)));
-
-
 static IRAM_ATTR void swdptap_seq_out_parity(uint32_t MS, int ticks)
 	__attribute__ ((optimize(3)));
 
 static void swdptap_turnaround(int dir)
 {
+	
 	static int olddir = SWDIO_STATUS_FLOAT;
 	register volatile int32_t cnt;
 
@@ -51,7 +51,6 @@ static void swdptap_turnaround(int dir)
 #ifdef DEBUG_SWD_BITS
 	DEBUG("%s", dir ? "\n-> ":"\n<- ");
 #endif
-
 	if(dir == SWDIO_STATUS_FLOAT)
 		SWDIO_MODE_FLOAT();
 	gpio_set(SWCLK_PORT, SWCLK_PIN);
@@ -68,7 +67,7 @@ static uint32_t swdptap_seq_in(int ticks)
 	uint32_t ret = 0;
 	int len = ticks;
 	register volatile int32_t cnt;
-
+	portENTER_CRITICAL();
 	swdptap_turnaround(SWDIO_STATUS_FLOAT);
 	if (swd_delay_cnt) {
 		while (len--) {
@@ -95,6 +94,7 @@ static uint32_t swdptap_seq_in(int ticks)
 	for (int i = 0; i < len; i++)
 		DEBUG("%d", (ret & (1 << i)) ? 1 : 0);
 #endif
+	portEXIT_CRITICAL();
 	return ret;
 }
 
@@ -105,6 +105,7 @@ static bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
 	bool bit;
 	int len = ticks;
 	register volatile int32_t cnt;
+	portENTER_CRITICAL();
 
 	swdptap_turnaround(SWDIO_STATUS_FLOAT);
 	if (swd_delay_cnt) {
@@ -140,6 +141,7 @@ static bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
 	*ret = res;
 	/* Terminate the read cycle now */
 	swdptap_turnaround(SWDIO_STATUS_DRIVE);
+	portEXIT_CRITICAL();
 	return (parity & 1);
 }
 
@@ -149,6 +151,7 @@ static void swdptap_seq_out(uint32_t MS, int ticks)
 	for (int i = 0; i < ticks; i++)
 		DEBUG("%d", (MS & (1 << i)) ? 1 : 0);
 #endif
+	portENTER_CRITICAL();
 	register volatile int32_t cnt;
 	swdptap_turnaround(SWDIO_STATUS_DRIVE);
 	gpio_set_val(SWDIO_PORT, SWDIO_PIN, MS & 1);
@@ -169,6 +172,8 @@ static void swdptap_seq_out(uint32_t MS, int ticks)
 			gpio_clear(SWCLK_PORT, SWCLK_PIN);
 		}
 	}
+	portEXIT_CRITICAL();
+
 }
 
 static void swdptap_seq_out_parity(uint32_t MS, int ticks)
@@ -178,6 +183,7 @@ static void swdptap_seq_out_parity(uint32_t MS, int ticks)
 	for (int i = 0; i < ticks; i++)
 		DEBUG("%d", (MS & (1 << i)) ? 1 : 0);
 #endif
+	portENTER_CRITICAL();
 	register volatile int32_t cnt;
 	swdptap_turnaround(SWDIO_STATUS_DRIVE);
 	gpio_set_val(SWDIO_PORT, SWDIO_PIN, MS & 1);
@@ -204,6 +210,7 @@ static void swdptap_seq_out_parity(uint32_t MS, int ticks)
 	for(cnt = swd_delay_cnt; --cnt > 0;);
 	gpio_clear(SWCLK_PORT, SWCLK_PIN);
 	for(cnt = swd_delay_cnt; --cnt > 0;);
+	portEXIT_CRITICAL();
 }
 
 swd_proc_t swd_proc;
