@@ -1,18 +1,21 @@
+
 # Introduction
 
-blackmagic-espidf is a project which aims to support debugging SWD and JTAG targets over wifi by integrating blackmagic probe firmware to the espressif IDF platform for esp8266 and esp32.
+blackmagic-espidf is a project which aims to support debugging SWD and JTAG targets over wifi by integrating blackmagic probe firmware to the espressif IDF platform for esp8266.
 
 ## Features
-
+- **NEW** Automatic Attach to target on connect
+- **NEW** Live Expressions support in STM32CubeIDE
+- **NEW** Non-Stop GDB protocol and multiple GDB connections (beta)
 - All the debug features and supported targets of the blackmagic firmware
-- GDB server on TCP port 2022 and UDP port 2023
-- Serial port server on TCP port 23 and UDP port 2323
+- GDB server on TCP port 2022
+- Serial port server on TCP port 23
 - Serial port over websocket on embedded http server (powered by xterm.js) @ http://192.168.4.1
 - OTA updates over tftp
 - Platform debug messages terminal over http://192.168.4.1/debug.html
 
 ## ![web](images/web.gif)
-
+## ![web](images/live.gif) ![web](images/stmcube.png)
 ## ![gdb connection](images/gdb.gif)
 
 ## Requirements
