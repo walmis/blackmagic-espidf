@@ -38,7 +38,7 @@ static IRAM_ATTR void swdptap_seq_out(uint32_t MS, int ticks)
 static IRAM_ATTR void swdptap_seq_out_parity(uint32_t MS, int ticks)
 	__attribute__ ((optimize(3)));
 
-#if 0
+#if 1
 static void swdptap_turnaround(int dir)
 {
 	
