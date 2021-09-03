@@ -169,7 +169,7 @@ void GDB::gdb_putpacket(const char *packet, int size, char pktstart)
 			else
 				DEBUG_GDB_WIRE("\\x%02X", c);
 #endif
-			if((c == '$') || (c == '#') || (c == '}')) {
+			if((c == '$') || (c == '#') || (c == '}') || (c == '*')) {
 				gdb_if_putchar('}', 0);
 				gdb_if_putchar(c ^ 0x20, 0);
 				csum += '}' + (c ^ 0x20);
