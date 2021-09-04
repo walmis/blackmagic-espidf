@@ -1,22 +1,46 @@
 
 # Introduction
 
-blackmagic-espidf is a project which aims to support debugging SWD and JTAG targets over wifi by integrating blackmagic probe firmware to the espressif IDF platform for esp8266.
+blackmagic-espidf is a project which aims to support debugging SWD and JTAG targets over wifi by integrating [blackmagic](https://github.com/blacksphere/blackmagic) probe firmware to the espressif IDF platform for esp8266.
 
 ## Features
-- **NEW** Automatic Attach to target on connect
+- **NEW** Automatic Attach to target on connect to GDB server
 - **NEW** Live Expressions support in STM32CubeIDE
 - **NEW** Non-Stop GDB protocol and multiple GDB connections (beta)
-- All the debug features and supported targets of the blackmagic firmware
+- All the debug features and supported targets of the [blackmagic](https://github.com/blacksphere/blackmagic) firmware:
+  * Targets ARM Cortex-M and Cortex-A based microcontrollers.
+  * Connects to the target processor using the JTAG or Serial Wire Debug (SWD) interface.
+  * Provides full debugging functionality, including: watchpoints, flash memory breakpoints, memory and register examination, flash memory programming, etc.
+  * Load your application into the target Flash memory or RAM.
+  * Single step through your program.
+  * Run your program in real-time and halt on demand.
+  * Examine and modify CPU registers and memory.
+  * Obtain a call stack backtrace.
+  * Set up to 6 hardware assisted breakpoints.
+  * Set up to 4 hardware assisted read, write or access watchpoints.
+  * Set unlimited software breakpoints when executing your application from RAM.
+- Implements the GDB extended remote debugging protocol for seamless integration with the GNU debugger and other GNU development tools.
 - GDB server on TCP port 2022
 - Serial port server on TCP port 23
 - Serial port over websocket on embedded http server (powered by xterm.js) @ http://192.168.4.1
 - OTA updates over tftp
-- Platform debug messages terminal over http://192.168.4.1/debug.html
+- Platform/BMP debug messages terminal over http://192.168.4.1/debug.html
 
 ## ![web](images/web.gif)
-## ![web](images/live.gif) ![web](images/stmcube.png)
+
+Live Expressions in STMCubeIDE
+## ![web](images/live.gif) 
+
+STMCubeIDE settings
+## ![web](images/stmcube.png)
+
 ## ![gdb connection](images/gdb.gif)
+
+## Supported Targets:
+<p align="center">
+<a href="https://raw.githubusercontent.com/wiki/blacksphere/blackmagic/images/bmpm_ARM_Cortex-M_targets-2021.png"><img src="https://raw.githubusercontent.com/wiki/blacksphere/blackmagic/images/bmpm_ARM_Cortex-M_targets-2021.png" width="80%"></a><br/>
+<a href="https://raw.githubusercontent.com/wiki/blacksphere/blackmagic/images/bmpm_ARM_Cortex-A_alpha_targets.png"><img src="https://raw.githubusercontent.com/wiki/blacksphere/blackmagic/images/bmpm_ARM_Cortex-A_alpha_targets.png" width="80%"></a>
+</p>
 
 ## Requirements
 
@@ -74,4 +98,12 @@ If the firmware is already on the esp8266 device, it is possible to flash using 
 ```bash
 make tftpflash
 ```
+
+## Buy me a coffee
+
+If you find this project useful, consider buying me a coffee :-)
+
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=66JLPHXMD3XW2)
+
+Don't forget to support Blackmagic developers ! 
 
