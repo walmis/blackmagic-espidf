@@ -29,7 +29,43 @@ config ESP_WIFI_PASSWORD
     default "helloworld"
     help
 	   WiFi password (WPA or WPA2) for the example to use.
-		
+
+config ESP_WIFI_SSID2
+    string "WiFi SSID 2"
+    default ""
+    help
+	   SSID (network name) for 2nd network
+
+config ESP_WIFI_PASSWORD2
+    string "WiFi Password 2"
+    default ""
+    help
+	   WiFi password (WPA or WPA2) for 2nd network.
+
+config ESP_WIFI_SSID3
+    string "WiFi SSID 3"
+    default ""
+    help
+	   SSID (network name) for 3rd network
+
+config ESP_WIFI_PASSWORD3
+    string "WiFi Password 3"
+    default ""
+    help
+	   WiFi password (WPA or WPA2) for 3rd network.
+
+config ESP_WIFI_SSID4
+    string "WiFi SSID 4"
+    default ""
+    help
+	   SSID (network name) for 4th network
+
+config ESP_WIFI_PASSWORD4
+    string "WiFi Password 4"
+    default ""
+    help
+	   WiFi password (WPA or WPA2) for 4th network.
+
 config MAX_STA_CONN
     int "Max STA conn"
     default 4

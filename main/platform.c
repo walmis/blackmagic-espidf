@@ -404,6 +404,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 }
 
 #if CONFIG_ESP_WIFI_MODE_AP
+
 void wifi_init_softap()
 {
     //wifi_event_group = xEventGroupCreate();
@@ -442,6 +443,43 @@ void wifi_init_softap()
 }
 #endif
 #if CONFIG_ESP_WIFI_IS_STATION
+static esp_err_t wifi_fill_sta_config(wifi_config_t *wifi_config) {
+    ESP_LOGI(__func__, "wifi_fill_sta_config begun.");
+    while (1) {
+        uint16_t i;
+        wifi_scan_config_t scan_config = {0};
+        ESP_ERROR_CHECK(esp_wifi_scan_start(&scan_config, true));
+        uint16_t num_aps = 0;
+        ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&num_aps));
+        wifi_ap_record_t scan_results[num_aps];
+        ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&num_aps, scan_results));
+
+        for (i = 0; i < num_aps; i++) {
+            if ((strlen(CONFIG_ESP_WIFI_SSID) > 0) && !strcmp((char *)scan_results[i].ssid, CONFIG_ESP_WIFI_SSID)) {
+                strncpy((char *)wifi_config->sta.ssid, CONFIG_ESP_WIFI_SSID, sizeof(wifi_config->sta.ssid));
+                strncpy((char *)wifi_config->sta.password, CONFIG_ESP_WIFI_PASSWORD, sizeof(wifi_config->sta.password));
+                return;
+            }
+            if ((strlen(CONFIG_ESP_WIFI_SSID2) > 0) && !strcmp((char *)scan_results[i].ssid, CONFIG_ESP_WIFI_SSID2)) {
+                strncpy((char *)wifi_config->sta.ssid, CONFIG_ESP_WIFI_SSID2, sizeof(wifi_config->sta.ssid));
+                strncpy((char *)wifi_config->sta.password, CONFIG_ESP_WIFI_PASSWORD2, sizeof(wifi_config->sta.password));
+                return;
+            }
+            if ((strlen(CONFIG_ESP_WIFI_SSID3) > 0) && !strcmp((char *)scan_results[i].ssid, CONFIG_ESP_WIFI_SSID3)) {
+                strncpy((char *)wifi_config->sta.ssid, CONFIG_ESP_WIFI_SSID3, sizeof(wifi_config->sta.ssid));
+                strncpy((char *)wifi_config->sta.password, CONFIG_ESP_WIFI_PASSWORD3, sizeof(wifi_config->sta.password));
+                return;
+            }
+            if ((strlen(CONFIG_ESP_WIFI_SSID4) > 0) && !strcmp((char *)scan_results[i].ssid, CONFIG_ESP_WIFI_SSID4)) {
+                strncpy((char *)wifi_config->sta.ssid, CONFIG_ESP_WIFI_SSID4, sizeof(wifi_config->sta.ssid));
+                strncpy((char *)wifi_config->sta.password, CONFIG_ESP_WIFI_PASSWORD4, sizeof(wifi_config->sta.password));
+                return;
+            }
+        }
+    }
+
+}
+
 void wifi_init_sta()
 {
     ESP_LOGI(__func__, "wifi_init_sta begun.");
@@ -454,12 +492,7 @@ void wifi_init_sta()
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = CONFIG_ESP_WIFI_SSID,
-            .password = CONFIG_ESP_WIFI_PASSWORD
-        },
-    };
+    wifi_config_t wifi_config;
 
     result = esp_base_mac_addr_get(mac_address);
 
@@ -472,6 +505,7 @@ void wifi_init_sta()
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM) );
+    wifi_fill_sta_config(&wifi_config);
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
 
     ESP_ERROR_CHECK(esp_wifi_start() );
