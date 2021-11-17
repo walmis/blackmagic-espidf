@@ -68,8 +68,8 @@ void platform_set_baud(uint32_t baud);
 
 
 #define gpio_enable(pin, mode) do { gpio_set_direction(pin, mode); } while(0)
-#define gpio_set(port, pin) do {GPIO.out_w1ts |= (0x1 << pin); } while(0)
-#define gpio_clear(port, pin) do{GPIO.out_w1tc |= (0x1 << pin);} while(0)
+#define gpio_set(port, pin) do {GPIO.out_w1ts = (0x1 << pin); } while(0)
+#define gpio_clear(port, pin) do{GPIO.out_w1tc = (0x1 << pin);} while(0)
 #define gpio_get(port, pin) ((GPIO.in >> pin)&0x1)
 #define gpio_set_val(port, pin, value) if(value) { gpio_set(port, pin); } else { gpio_clear(port, pin); }	
 
