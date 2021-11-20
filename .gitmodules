@@ -12,3 +12,6 @@ url = https://github.com/walmis/libesphttpd.git
 [submodule "components/blackmagic/blackmagic"]
 	path = components/blackmagic/blackmagic
 	url = https://github.com/blacksphere/blackmagic.git
+[submodule "esp-idf"]
+	path = esp-idf
+	url = git@github.com:espressif/esp-idf.git

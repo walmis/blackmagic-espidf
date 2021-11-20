@@ -42,7 +42,7 @@ extern "C" {
 }
 
 #include "gdb_if.hpp"
-#include "task.h"
+#include <freertos/task.h>
 
 enum gdb_signal {
 	GDB_SIGINT = 2,
@@ -157,7 +157,7 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 		if(!cur_target && !last_target) {
 			ESP_LOGI("GDB", "Scanning SWD");
 			int devs = -1;
-			volatile struct exception e;
+			struct exception e;
 			TRY_CATCH (e, EXCEPTION_ALL) {
 				devs = adiv5_swdp_scan(0);
 				ESP_LOGI("GDB", "Found %d", devs);

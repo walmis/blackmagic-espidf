@@ -6,7 +6,7 @@
  * Copyright (C) 2015 Superhouse Automation Pty Ltd
  * BSD Licensed as described in the file LICENSE
  */
-#include <FreeRTOS.h>
+#include <freertos/FreeRTOS.h>
 #include <string.h>
 #include <strings.h>
 

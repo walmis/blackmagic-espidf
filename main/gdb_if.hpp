@@ -1,8 +1,8 @@
 #pragma once
 #include <stdarg.h>
 #define BUF_SIZE	1024
-#include "FreeRTOS.h"
-#include "semphr.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 extern "C" {
 #include "gdb_packet.h"
 int gdb_main_loop(struct target_controller * tc, bool in_syscall);

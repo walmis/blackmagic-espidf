@@ -34,8 +34,8 @@
 #include <sys/time.h>
 #include <sys/unistd.h>
 
-#include "FreeRTOS.h"
-#include "task.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 #include "dhcpserver/dhcpserver.h"
 //#include <sysparam.h>
@@ -49,14 +49,14 @@
 #include "lwip/api.h"
 #include "lwip/tcp.h"
 
-#include "rom/ets_sys.h"
+#include "esp32/rom/ets_sys.h"
 #include "esp_wifi.h"
-#include "esp_event_loop.h"
+#include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "driver/uart.h"
 #include "driver/gpio.h"
-#include "esp8266/uart_register.h"
+// #include "esp8266/uart_register.h"
 
 #include <lwip/sockets.h>
 
@@ -68,12 +68,16 @@ uint32_t swd_delay_cnt;
 
 void platform_max_frequency_set(uint32_t freq)
 {
-	if(freq < 50000) return;
-  int cnt = (160000000L - SWD_TOTAL_CYCLES*(int)freq)/(SWD_CYCLES_PER_CLOCK*(int)freq);
-  if(cnt < 0) cnt = 0;
-  swd_delay_cnt = cnt;
-  ESP_LOGI(__func__, "freq:%u set delay cycles: %d", freq, swd_delay_cnt);
+	if(freq < 50000) {
+        return;
+    }
 
+    int cnt = (160000000L - SWD_TOTAL_CYCLES*(int)freq)/(SWD_CYCLES_PER_CLOCK*(int)freq);
+    if(cnt < 0) {
+        cnt = 0;
+    }
+    swd_delay_cnt = cnt;
+    ESP_LOGI(__func__, "freq:%u set delay cycles: %d", freq, swd_delay_cnt);
 }
 
 uint32_t platform_max_frequency_get(void)
@@ -113,65 +117,64 @@ struct
     
 void platform_init() {
 #ifdef USE_GPIO2_UART
-  PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_UART1_TXD_BK);
+    PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_UART1_TXD_BK);
 #else
-  PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_GPIO2);
+    PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, PIN_FUNC_GPIO);
 #endif
 
 #if IS_GPIO_USED(1)
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_GPIO1);
 #endif
 
-  gpio_clear(_, SWCLK_PIN);
-  gpio_clear(_, SWDIO_PIN);
+    gpio_clear(_, SWCLK_PIN);
+    gpio_clear(_, SWDIO_PIN);
 
-  gpio_enable(SWCLK_PIN, GPIO_OUTPUT);
-  gpio_enable(SWDIO_PIN, GPIO_OUTPUT);
-
+    gpio_enable(SWCLK_PIN, GPIO_OUTPUT);
+    gpio_enable(SWDIO_PIN, GPIO_OUTPUT);
 }
 
 void platform_buffer_flush(void) {
-  ;
+    ;
 }
 
 void platform_srst_set_val(bool assert) {
-  if(assert) {
-    gpio_set_direction(CONFIG_SRST_GPIO, GPIO_OUTPUT);
-    gpio_set_level(CONFIG_SRST_GPIO, 0);
-  } else {
-    gpio_set_level(CONFIG_SRST_GPIO, 1);
-    gpio_set_direction(CONFIG_SRST_GPIO, GPIO_INPUT);
-  }
+    if(assert) {
+        gpio_set_direction(CONFIG_SRST_GPIO, GPIO_OUTPUT);
+        gpio_set_level(CONFIG_SRST_GPIO, 0);
+    } else {
+        gpio_set_level(CONFIG_SRST_GPIO, 1);
+        gpio_set_direction(CONFIG_SRST_GPIO, GPIO_INPUT);
+    }
 }
 
 bool platform_srst_get_val(void) {
-  return !gpio_get_level(CONFIG_SRST_GPIO);
+    return !gpio_get_level(CONFIG_SRST_GPIO);
 }
 
 const char*
 platform_target_voltage(void) {
-  static char voltage[16];
-  int vdd = esp_wifi_get_vdd33();
-  sprintf(voltage, "%dmV", vdd);
-  return voltage;
+    static char voltage[16];
+    extern uint16_t rom_phy_get_vdd33(void);
+    int vdd = rom_phy_get_vdd33();
+    sprintf(voltage, "%dmV", vdd);
+    return voltage;
 }
 
 uint32_t platform_time_ms(void) {
-  return xTaskGetTickCount() * portTICK_PERIOD_MS;
+    return xTaskGetTickCount() * portTICK_PERIOD_MS;
 }
 
 #define vTaskDelayMs(ms)	vTaskDelay((ms)/portTICK_PERIOD_MS)
 
 void platform_delay(uint32_t ms) {
-  vTaskDelayMs(ms);
+    vTaskDelayMs(ms);
 }
 
 int platform_hwversion(void) {
-  return 0;
+    return 0;
 }
 
 void net_uart_task(void* params) {
-
 	tcp_serv_sock = socket(AF_INET, SOCK_STREAM, 0);
 	udp_serv_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	tcp_client_sock = 0;
@@ -315,20 +318,20 @@ void dbg_task(void *parameters) {
 	//IP_ADDR4(&ip, 192, 168, 4, 255);
 
 	while(1) {
-    xSemaphoreTake(dbg_msg_queue.sem, -1);
+        xSemaphoreTake(dbg_msg_queue.sem, -1);
 
-    while(!CBUF_IsEmpty(dbg_msg_queue)) {
-      char c = CBUF_Pop(dbg_msg_queue);
-      http_debug_putc(c, c=='\n' ? 1 : 0);
+        while(!CBUF_IsEmpty(dbg_msg_queue)) {
+        char c = CBUF_Pop(dbg_msg_queue);
+        http_debug_putc(c, c=='\n' ? 1 : 0);
+        }
     }
-	}
 }
 
 void debug_putc(char c, int flush) {
-  CBUF_Push(dbg_msg_queue, c);
-  if(flush) {
-    xSemaphoreGive(dbg_msg_queue.sem);
-  }
+    CBUF_Push(dbg_msg_queue, c);
+    if(flush) {
+        xSemaphoreGive(dbg_msg_queue.sem);
+    }
 }
 
 void platform_set_baud(uint32_t baud) {
@@ -338,20 +341,19 @@ void platform_set_baud(uint32_t baud) {
 }
 
 bool cmd_setbaud(target *t, int argc, const char **argv) {
-
 	if (argc == 1) {
 		uint32_t baud;
 		uart_get_baudrate(0, &baud);
 		gdb_outf("Current baud: %d\n", baud);
 	}
-	  if (argc == 2) {
+    if (argc == 2) {
 		int baud = atoi(argv[1]);
 		gdb_outf("Setting baud: %d\n", baud);
 
 		platform_set_baud(baud);
-	  }
+    }
 
-  return 1;
+     return 1;
 }
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
@@ -390,10 +392,10 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
         ESP_LOGE("WIFI", "Disconnect reason : %d", info->disconnected.reason);
-        if (info->disconnected.reason == WIFI_REASON_BASIC_RATE_NOT_SUPPORT) {
-            /*Switch to 802.11 bgn mode */
-            //esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCAL_11B | WIFI_PROTOCAL_11G | WIFI_PROTOCAL_11N);
-        }
+        // if (info->disconnected.reason == WIFI_REASON_BASIC_RATE_NOT_SUPPORT) {
+        //     /*Switch to 802.11 bgn mode */
+        //     //esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCAL_11B | WIFI_PROTOCAL_11G | WIFI_PROTOCAL_11N);
+        // }
         esp_wifi_connect();
         //xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
         break;
@@ -508,10 +510,10 @@ void wifi_init_sta()
     result = esp_base_mac_addr_get(mac_address);
 
     if(result == ESP_ERR_INVALID_MAC) {
-      ESP_LOGE(__func__, "base mac address invalid.  reading from fuse.");
-      ESP_ERROR_CHECK(esp_efuse_mac_get_default(mac_address));
-      ESP_ERROR_CHECK(esp_base_mac_addr_set(mac_address));
-      ESP_LOGE(__func__, "base mac address configured.");
+        ESP_LOGE(__func__, "base mac address invalid.  reading from fuse.");
+        ESP_ERROR_CHECK(esp_efuse_mac_get_default(mac_address));
+        ESP_ERROR_CHECK(esp_base_mac_addr_set(mac_address));
+        ESP_LOGE(__func__, "base mac address configured.");
     }
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
@@ -521,10 +523,10 @@ void wifi_init_sta()
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     result = esp_base_mac_addr_get(mac_address);
     if(result == ESP_ERR_INVALID_MAC) {
-      ESP_LOGE(__func__, "base mac address invalid.  reading from fuse.");
-      ESP_ERROR_CHECK(esp_efuse_mac_get_default(mac_address));
-      ESP_ERROR_CHECK(esp_base_mac_addr_set(mac_address));
-      ESP_LOGE(__func__, "base mac address configured.");
+        ESP_LOGE(__func__, "base mac address invalid.  reading from fuse.");
+        ESP_ERROR_CHECK(esp_efuse_mac_get_default(mac_address));
+        ESP_ERROR_CHECK(esp_base_mac_addr_set(mac_address));
+        ESP_LOGE(__func__, "base mac address configured.");
     }
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
@@ -532,24 +534,21 @@ void wifi_init_sta()
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(__func__, "wifi_init_sta finished.");
-
 }
 #endif
+
 //wifi_softap_set_dhcps_offer_option(OFFER_ROUTER, 0)
 void uart_send_break() {
-  uart_wait_tx_done(0, 10);
+    uart_wait_tx_done(0, 10);
 
-  uint32_t baud;
-  uart_get_baudrate(0, &baud); //save current baudrate
-  uart_set_baudrate(0, baud/2); // set half the baudrate
-  char b = 0x00;
-  uart_write_bytes(0, &b, 1);
-  uart_wait_tx_done(0, 10);
-  uart_set_baudrate(0, baud); //restore baudrate
+    uint32_t baud;
+    uart_get_baudrate(0, &baud); //save current baudrate
+    uart_set_baudrate(0, baud/2); // set half the baudrate
+    char b = 0x00;
+    uart_write_bytes(0, &b, 1);
+    uart_wait_tx_done(0, 10);
+    uart_set_baudrate(0, baud); //restore baudrate
 }
-
-//defined in blackmagic component
-extern void main();
 
 int putc_noop(int c) {
 	return c;
@@ -568,77 +567,75 @@ extern void gdb_net_task();
 void app_main(void) {
 #if CONFIG_TARGET_UART
 #warning Target UART configured.  ESP8266 debugging info will not be available via UART.
-  ESP_LOGI(__func__, "deactivating debug uart");
-  esp_log_set_putchar(putc_noop);
+    ESP_LOGI(__func__, "deactivating debug uart");
+    esp_log_set_putchar(putc_noop);
 #endif
 
-  esp_err_t ret = nvs_flash_init();
-  if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
-    ESP_ERROR_CHECK(nvs_flash_erase());
-    ret = nvs_flash_init();
-  }
-  ESP_ERROR_CHECK(ret);
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
 
-  ESP_ERROR_CHECK(nvs_open("config", NVS_READWRITE, &h_nvs_conf));
+    ESP_ERROR_CHECK(nvs_open("config", NVS_READWRITE, &h_nvs_conf));
 
 #if CONFIG_ESP_WIFI_IS_STATION
-  wifi_init_sta();
+    wifi_init_sta();
 #else
-  wifi_init_softap();
-
-  esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11N );
+    wifi_init_softap();
+    esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11N );
 #endif
 
-  //esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B);
+    //esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B);
 
-  httpd_start();
+    httpd_start();
 
-  esp_wifi_set_ps (WIFI_PS_NONE);
+    esp_wifi_set_ps (WIFI_PS_NONE);
 
-  CBUF_Init(dbg_msg_queue);
-  dbg_msg_queue.sem = xSemaphoreCreateBinary();
+    CBUF_Init(dbg_msg_queue);
+    dbg_msg_queue.sem = xSemaphoreCreateBinary();
 
 #if CONFIG_TARGET_UART
-  ESP_LOGI(__func__, "configuring uart for target");
+    ESP_LOGI(__func__, "configuring uart for target");
 
-  esp_log_set_putchar(putc_remote);
+    esp_log_set_putchar(putc_remote);
 
-  uint32_t baud = 230400;
-  nvs_get_u32(h_nvs_conf, "uartbaud", &baud);
+    uint32_t baud = 230400;
+    nvs_get_u32(h_nvs_conf, "uartbaud", &baud);
 
-  uart_set_baudrate(0, baud);
-  uart_set_baudrate(1, baud);
+    uart_set_baudrate(0, baud);
+    uart_set_baudrate(1, baud);
 
-  ESP_ERROR_CHECK(uart_driver_install(0, 4096, 256, 16, &uart_event_queue, 0));
+    ESP_ERROR_CHECK(uart_driver_install(0, 4096, 256, 16, &uart_event_queue, 0));
 
-  uart_intr_config_t uart_intr = {
-      .intr_enable_mask = UART_RXFIFO_FULL_INT_ENA_M
-      | UART_RXFIFO_TOUT_INT_ENA_M
-      | UART_FRM_ERR_INT_ENA_M
-      | UART_RXFIFO_OVF_INT_ENA_M,
-      .rxfifo_full_thresh = 80,
-      .rx_timeout_thresh = 2,
-      .txfifo_empty_intr_thresh = 10
-  };
+    uart_intr_config_t uart_intr = {
+        .intr_enable_mask = UART_RXFIFO_FULL_INT_ENA_M
+                            | UART_RXFIFO_TOUT_INT_ENA_M
+                            | UART_FRM_ERR_INT_ENA_M
+                            | UART_RXFIFO_OVF_INT_ENA_M,
+        .rxfifo_full_thresh = 80,
+        .rx_timeout_thresh = 2,
+        .txfifo_empty_intr_thresh = 10
+    };
 
-  uart_intr_config(0, &uart_intr);
+    uart_intr_config(0, &uart_intr);
 
 #endif
 
-  platform_init();
+    platform_init();
 
-  xTaskCreate(&dbg_task, "dbg_main", 1024, NULL, 4, NULL);
-  xTaskCreate(&gdb_net_task, "gdb_net", 2048, NULL, 1, NULL);
+    xTaskCreate(&dbg_task, "dbg_main", 1024, NULL, 4, NULL);
+    xTaskCreate(&gdb_net_task, "gdb_net", 2048, NULL, 1, NULL);
 
 #if CONFIG_TARGET_UART
-  xTaskCreate(&uart_rx_task, "uart_rx_task", 1200, NULL, 5, NULL);
-  xTaskCreate(&net_uart_task, "net_uart_task", 1200, NULL, 5, NULL);
+    xTaskCreate(&uart_rx_task, "uart_rx_task", 1200, NULL, 5, NULL);
+    xTaskCreate(&net_uart_task, "net_uart_task", 1200, NULL, 5, NULL);
 #endif
 
-  ota_tftp_init_server(69, 4);
+    ota_tftp_init_server(69, 4);
 
-  ESP_LOGI(__func__, "Free heap %d\n", esp_get_free_heap_size());
- 
+    ESP_LOGI(__func__, "Free heap %d\n", esp_get_free_heap_size());
 }
 
 #ifndef ENABLE_DEBUG

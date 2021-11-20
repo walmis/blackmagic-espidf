@@ -15,9 +15,9 @@
                       memcpy(out, in, __len); \
                       if (__len && (out[__len-1] == '\n')) { out[__len-1] = ' '; }
 
-#define DEBUG_WARN(x, ...) do { TRIM(tmp, x); ESP_LOGW("BMP:W", tmp, ##__VA_ARGS__); } while (0)
-#define DEBUG_INFO(x, ...) do { TRIM(tmp, x);  ESP_LOGI("BMP:I", tmp, ##__VA_ARGS__); } while (0)
-#define DEBUG_GDB(x, ...) do { TRIM(tmp, x);  ESP_LOGI("GDB", tmp, ##__VA_ARGS__); } while (0)
-#define DEBUG_TARGET(x, ...) do { TRIM(tmp, x);  ESP_LOGI("TARG", tmp, ##__VA_ARGS__); } while (0)
+#define DEBUG_WARN(x, ...) /*do { TRIM(tmp, x); ESP_LOGW("BMP:W", tmp, ##__VA_ARGS__); } while (0)*/
+#define DEBUG_INFO(x, ...) /*do { TRIM(tmp, x);  ESP_LOGI("BMP:I", tmp, ##__VA_ARGS__); } while (0)*/
+#define DEBUG_GDB(x, ...) /*do { TRIM(tmp, x);  ESP_LOGI("GDB", tmp, ##__VA_ARGS__); } while (0)*/
+#define DEBUG_TARGET(x, ...) /*do { TRIM(tmp, x);  ESP_LOGI("TARG", tmp, ##__VA_ARGS__); } while (0)*/
 
 #endif

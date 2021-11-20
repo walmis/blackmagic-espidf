@@ -32,7 +32,7 @@
 #   include "lwip/dns.h"
 #include "esp_log.h"
 
-#include <timers.h>
+#include <freertos/timers.h>
 
 extern "C" {
 #include "exception.h"
@@ -129,7 +129,7 @@ public:
 		num_clients++;
 
 		while (true) {
-			volatile struct exception e;
+			struct exception e;
 			TRY_CATCH(e, EXCEPTION_ALL) {
 				gdb_main();
 			}

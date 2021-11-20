@@ -29,8 +29,8 @@
 
 #include "esp_log.h"
 #include "esp_attr.h"
-#include "esp8266/pin_mux_register.h"
-#include "esp8266/gpio_struct.h"
+// #include "esp8266/pin_mux_register.h"
+// #include "esp8266/gpio_struct.h"
 
 void platform_buffer_flush(void);
 void platform_set_baud(uint32_t baud);

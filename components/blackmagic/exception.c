@@ -1,8 +1,8 @@
 #include "exception.h"
 #include <stdlib.h>
 #include "general.h"
-#include "FreeRTOS.h"
-#include "task.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include "esp_log.h"
 
 void raise_exception(uint32_t type, const char *msg)

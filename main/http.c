@@ -14,10 +14,10 @@
 #include <libesphttpd/cgiredirect.h>
 #include "espfs.h"
 #include "driver/uart.h"
-#include <FreeRTOS.h>
-#include <task.h>
-#include <semphr.h>
-#include <queue.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/semphr.h>
+#include <freertos/queue.h>
 #include "platform.h"
 #include "hashmap.h"
 
@@ -191,8 +191,19 @@ CgiStatus cgi_status(HttpdConnData *connData) {
       hashmap_set(task_times, tsk->xTaskNumber, tsk->ulRunTimeCounter);
       tsk->ulRunTimeCounter -= last_task_time;
 
-      len = snprintf(buff, sizeof(buff), "\tid: %4u, name: %16s, prio: %3u, state: %8s, stack_hwm: %4u, cpu: %d%%\n",
-          tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority, task_state_name[tsk->eCurrentState], tsk->usStackHighWaterMark, tsk->ulRunTimeCounter / total_runtime);
+      // len = snprintf(buff, sizeof(buff), "\tid: %4u, name: %16s, prio: %3u, state: %8s, stack_hwm: %4u, cpu: %d%%, pc: 0x%08x [0x%08x] 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n",
+      //     tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority, task_state_name[tsk->eCurrentState], tsk->usStackHighWaterMark, tsk->ulRunTimeCounter / total_runtime,
+      //     (*((uint32_t **)tsk->xHandle))[0],
+      //     (*((uint32_t **)tsk->xHandle))[1],
+      //     (*((uint32_t **)tsk->xHandle))[2],
+      //     (*((uint32_t **)tsk->xHandle))[3],
+      //     (*((uint32_t **)tsk->xHandle))[4],
+      //     (*((uint32_t **)tsk->xHandle))[5],
+      //     (*((uint32_t **)tsk->xHandle))[6],
+      //     (*((uint32_t **)tsk->xHandle))[7]);
+      len = snprintf(buff, sizeof(buff), "\tid: %4u, name: %16s, prio: %3u, state: %8s, stack_hwm: %4u, cpu: %d%%, pc: 0x%08x\n",
+          tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority, task_state_name[tsk->eCurrentState], tsk->usStackHighWaterMark, tsk->ulRunTimeCounter / total_runtime,
+          (*((uint32_t **)tsk->xHandle))[1]);
 
 
       httpdSend(connData, buff, len);
