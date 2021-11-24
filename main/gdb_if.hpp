@@ -62,6 +62,9 @@ protected:
     char pbuf[BUF_SIZE+1];
     bool non_stop = 0;
     bool no_ack_mode = 0;
+    
+	bool single_step = false;
+	bool run_state = false;
 
     inline static  int num_clients = 0;
 };

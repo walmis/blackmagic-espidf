@@ -56,8 +56,6 @@ enum gdb_signal {
 
 static target *cur_target;
 static target *last_target;
-static bool single_step = false;
-static bool run_state = false;
 
 static void gdb_target_destroy_callback(struct target_controller *tc, target *t)
 {
@@ -151,6 +149,7 @@ static bool cmd_read_ap(target *t, int argc, const char **argv) {
 
 int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 {
+	
 	{
 		GDB_LOCK();
 
@@ -240,7 +239,7 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 					case TARGET_HALT_RUNNING:
 						break;
 					default:
-						gdb_putpacket_f("T%02Xthread:1;core:0;", GDB_SIGTRAP);
+						gdb_putpacket_f("T%02X", GDB_SIGTRAP);
 						break;
 					}
 				}
@@ -384,13 +383,13 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 				morse("TARGET LOST.", true);
 				break;
 			case TARGET_HALT_REQUEST:
-				gdb_putpacket_f("T%02X", GDB_SIGINT);
+				gdb_putpacket_f("T%02Xthread:1;core:0;", GDB_SIGINT);
 				break;
 			case TARGET_HALT_WATCHPOINT:
 				gdb_putpacket_f("T%02Xwatch:%08X;", GDB_SIGTRAP, watch);
 				break;
 			case TARGET_HALT_FAULT:
-				gdb_putpacket_f("T%02X", GDB_SIGSEGV);
+				gdb_putpacket_f("T%02Xthread:1;core:0;", GDB_SIGSEGV);
 				break;
 			case TARGET_HALT_RUNNING:
 				gdb_putpacket_f("T%02Xthread:1;core:0;", 0);
