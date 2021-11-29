@@ -8,7 +8,7 @@
 void raise_exception(uint32_t type, const char *msg)
 {
 	struct exception *e;
-	ESP_LOGW("EX", "Exception: %s\n", msg);
+	ESP_LOGW("EX", "Exception: %s", msg);
 	for (e = innermost_exception; e; e = e->outer) {
 
 		if (e->mask & type) {

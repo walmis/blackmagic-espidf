@@ -179,10 +179,10 @@ static void tftp_task(void *listen_port)
         return;
     }
 
-    struct sockaddr_in addr;
-    addr.sin_addr.s_addr = 0;
-    addr.sin_family = AF_INET;
-    addr.sin_port = ntohs((int)listen_port);
+    // struct sockaddr_in addr;
+    // addr.sin_addr.s_addr = 0;
+    // addr.sin_family = AF_INET;
+    // addr.sin_port = ntohs((int)listen_port);
     netconn_bind(nc, IP_ADDR_ANY, (int)listen_port);
     //bind(sock, (struct socaddr*)&addr, sizeof(addr));
 

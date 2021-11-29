@@ -1,17 +1,12 @@
-[submodule "esp32-espfs"]
-path = components/esp32-espfs
-url = https://github.com/walmis/esp32-espfs.git
-
+[submodule "espfs"]
+	path = components/espfs
+	url = https://github.com/xobs/libespfs.git
 [submodule "libesphttpd"]
-path = components/libesphttpd
-url = https://github.com/walmis/libesphttpd.git
-[submodule "ESP8266_RTOS_SDK"]
-	path = ESP8266_RTOS_SDK
-	url = https://github.com/espressif/ESP8266_RTOS_SDK.git
-
+	path = components/libesphttpd
+	url = https://github.com/xobs/libesphttpd.git
 [submodule "components/blackmagic/blackmagic"]
 	path = components/blackmagic/blackmagic
 	url = https://github.com/blacksphere/blackmagic.git
 [submodule "esp-idf"]
 	path = esp-idf
-	url = git@github.com:espressif/esp-idf.git
+	url = https://github.com/espressif/esp-idf.git
