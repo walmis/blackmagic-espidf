@@ -56,8 +56,20 @@ void platform_set_baud(uint32_t baud);
 #define TDI_PIN CONFIG_TDI_GPIO // "
 #define TDO_PIN CONFIG_TDO_GPIO // "
 
-#if defined(USE_GPIO2_UART) && (TMS_PIN==2 || TDI_PIN==2 || TDO_PIN==2 || TCK_PIN==2)
-#error "GPIO2 is used for UART TX"
+#if defined(CONFIG_TARGET_UART_NONE)
+/* No UART */
+#elif defined(CONFIG_TARGET_UART0)
+#error "UART0 not yet supported"
+#define TARGET_UART_IDX 0
+#define TARGET_UART_GPIO_MATRIX 14
+#elif defined(CONFIG_TARGET_UART1)
+#define TARGET_UART_IDX 1
+#define TARGET_UART_GPIO_MATRIX 17
+#elif defined(CONFIG_TARGET_UART2)
+#define TARGET_UART_IDX 2
+#define TARGET_UART_GPIO_MATRIX 198
+#else
+#error "Unsupported UART target"
 #endif
 
 #define SWDIO_PIN CONFIG_TMS_SWDIO_GPIO
@@ -65,7 +77,6 @@ void platform_set_baud(uint32_t baud);
 
 #define SWCLK_PORT 0
 #define SWDIO_PORT 0
-
 
 #define gpio_enable(pin, mode) do { gpio_set_direction(pin, mode); } while(0)
 #define gpio_set(port, pin) do {GPIO.out_w1ts = (0x1 << pin); } while(0)

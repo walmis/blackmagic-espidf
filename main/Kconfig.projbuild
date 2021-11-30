@@ -117,6 +117,18 @@ menu "Blackmagic Configuration"
             bool "UART2"
     endchoice # TARGET_UART
 
+    config UART_TX_GPIO
+        int "UART TX pin"
+        default 26
+        help
+        Pin to use for UART TX
+
+    config UART_RX_GPIO
+        int "UART RX pin"
+        default 27
+        help
+        Pin to use for UART RX
+        
     config DEBUG_UART
         bool "Use debug UART for log messages"
         default y

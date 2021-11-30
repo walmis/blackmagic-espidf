@@ -65,19 +65,6 @@
 
 #include "ota-tftp.h"
 
-#if defined(CONFIG_TARGET_UART_NONE)
-/* No UART */
-#elif defined(CONFIG_TARGET_UART0)
-#error "UART0 not yet supported"
-#define TARGET_UART_IDX 0
-#elif defined(CONFIG_TARGET_UART1)
-#define TARGET_UART_IDX 1
-#elif defined(CONFIG_TARGET_UART2)
-#define TARGET_UART_IDX 2
-#else
-#error "Unsupported UART target"
-#endif
-
 uint32_t swd_delay_cnt;
 #define SWD_CYCLES_PER_CLOCK 19L
 #define SWD_TOTAL_CYCLES 127L
@@ -135,16 +122,9 @@ struct
 
 void platform_init()
 {
-#ifdef USE_GPIO2_UART
-    PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_UART1_TXD_BK);
-#else
-    PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, PIN_FUNC_GPIO);
-#endif
-
 #if IS_GPIO_USED(1)
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_GPIO1);
 #endif
-
     gpio_clear(_, SWCLK_PIN);
     gpio_clear(_, SWDIO_PIN);
 
@@ -663,7 +643,7 @@ extern void gdb_net_task();
 
 void app_main(void)
 {
-    
+
     // Initialize debugging early, since the handover happens first.
     CBUF_Init(dbg_msg_queue);
     dbg_msg_queue.sem = xSemaphoreCreateBinary();
@@ -696,24 +676,32 @@ void app_main(void)
 
     esp_wifi_set_ps(WIFI_PS_NONE);
 
-#if !defined(CONFIG_TARGET_UART_NONE)
+#if defined(TARGET_UART_IDX)
     ESP_LOGI(__func__, "configuring UART%d for target", TARGET_UART_IDX);
 
     uint32_t baud = 230400;
     nvs_get_u32(h_nvs_conf, "uartbaud", &baud);
 
-    uart_set_baudrate(TARGET_UART_IDX, baud);
-
+    uart_config_t uart_config = {
+        .baud_rate = baud,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+    };
     ESP_ERROR_CHECK(uart_driver_install(TARGET_UART_IDX, 4096, 256, 16, &uart_event_queue, 0));
+    ESP_ERROR_CHECK(uart_param_config(TARGET_UART_IDX, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(TARGET_UART_IDX, CONFIG_UART_RX_GPIO, CONFIG_UART_TX_GPIO,
+                                 UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
-    uart_intr_config_t uart_intr = {
+    const uart_intr_config_t uart_intr = {
         .intr_enable_mask = UART_RXFIFO_FULL_INT_ENA_M | UART_RXFIFO_TOUT_INT_ENA_M | UART_FRM_ERR_INT_ENA_M | UART_RXFIFO_OVF_INT_ENA_M,
         .rxfifo_full_thresh = 80,
         .rx_timeout_thresh = 2,
         .txfifo_empty_intr_thresh = 10,
     };
 
-    uart_intr_config(TARGET_UART_IDX, &uart_intr);
+    ESP_ERROR_CHECK(uart_intr_config(TARGET_UART_IDX, &uart_intr));
 #endif
 
     platform_init();

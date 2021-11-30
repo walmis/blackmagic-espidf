@@ -29,11 +29,7 @@ static HttpdFreertosInstance instance;
 
 static void on_term_recv(Websock *ws, char *data, int len, int flags)
 {
-#ifdef USE_GPIO2_UART
-    uart_write_bytes(1, data, len);
-#else
-    uart_write_bytes(0, data, len);
-#endif
+    uart_write_bytes(TARGET_UART_IDX, data, len);
 }
 
 static void on_term_connect(Websock *ws)
