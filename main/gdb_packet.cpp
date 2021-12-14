@@ -28,6 +28,7 @@ extern "C" {
 #include "gdb_packet.h"
 #include "hex_utils.h"
 #include "remote.h"
+#include "esp_log.h"
 }
 
 #include <stdarg.h>
@@ -157,6 +158,9 @@ void GDB::gdb_putpacket(const char *packet, int size, char pktstart)
 	char xmit_csum[3];
 	int tries = 0;
 
+	if (packet == NULL) {
+    	ESP_LOGE(__func__, "gdb_putpacket packet is NULL");
+	}
 	do {
 		DEBUG_GDB_WIRE("%s : ", __func__);
 		csum = 0;

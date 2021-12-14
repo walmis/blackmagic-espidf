@@ -82,7 +82,7 @@ void gdb_target_printf(struct target_controller *tc,
     (void)tc;
     // TODO
     // gdb_voutf(fmt, ap);
-    void **ptr = (void **)pvTaskGetThreadLocalStoragePointer(NULL, 0);
+    void **ptr = (void **)pvTaskGetThreadLocalStoragePointer(NULL, GDB_TLS_INDEX);
     assert(ptr);
     GDB *_this = (GDB *)ptr[0];
     _this->gdb_voutf(fmt, ap);
@@ -722,7 +722,12 @@ void GDB::handle_q_packet(char *packet, int len)
             gdb_putpacketz("E01");
             return;
         }
-        gdb_putpacket_f("C%lx", generic_crc32(cur_target, addr, alen));
+        uint32_t crc;
+        int res = generic_crc32(cur_target, &crc, addr, alen);
+        if (res)
+            gdb_putpacketz("E03");
+        else
+            gdb_putpacket_f("C%lx", crc);
     }
     else
     {
@@ -956,7 +961,7 @@ void GDB::gdb_main(void)
 extern "C" int gdb_main_loop(struct target_controller *tc, bool in_syscall)
 {
     ESP_LOGI("C", "gdb_main_loop");
-    void **ptr = (void **)pvTaskGetThreadLocalStoragePointer(NULL, 0);
+    void **ptr = (void **)pvTaskGetThreadLocalStoragePointer(NULL, GDB_TLS_INDEX);
     assert(ptr);
     GDB *_this = (GDB *)ptr[0];
     return _this->gdb_main_loop(tc, in_syscall);

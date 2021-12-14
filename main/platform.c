@@ -113,23 +113,30 @@ struct
     SemaphoreHandle_t sem;
 } dbg_msg_queue;
 
-#define IS_GPIO_USED(x)               \
-    CONFIG_TMS_SWDIO_GPIO == x ||     \
-        CONFIG_TCK_SWCLK_GPIO == x || \
-        CONFIG_TDI_GPIO == x ||       \
-        CONFIG_TDO_GPIO == x ||       \
-        CONFIG_SRST_GPIO == x
-
-void platform_init()
+void platform_init(void)
 {
-#if IS_GPIO_USED(1)
-    PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_GPIO1);
-#endif
-    gpio_clear(_, SWCLK_PIN);
-    gpio_clear(_, SWDIO_PIN);
-
-    gpio_enable(SWCLK_PIN, GPIO_OUTPUT);
-    gpio_enable(SWDIO_PIN, GPIO_OUTPUT);
+    {
+        gpio_config_t gpio_conf = {
+            .pin_bit_mask = BIT64(CONFIG_TMS_SWDIO_GPIO),
+            .mode = GPIO_MODE_OUTPUT,
+            .pull_up_en = 0,
+            .pull_down_en = 0,
+            .intr_type = GPIO_INTR_DISABLE,
+        };
+        gpio_config(&gpio_conf);
+        gpio_set_level(CONFIG_TMS_SWDIO_GPIO, 1);
+    }
+    {
+        gpio_config_t gpio_conf = {
+            .pin_bit_mask = BIT64(CONFIG_TCK_SWCLK_GPIO),
+            .mode = GPIO_MODE_OUTPUT,
+            .pull_up_en = 0,
+            .pull_down_en = 0,
+            .intr_type = GPIO_INTR_DISABLE,
+        };
+        gpio_config(&gpio_conf);
+        gpio_set_level(CONFIG_TMS_SWDIO_GPIO, 1);
+    }
 }
 
 void platform_buffer_flush(void)
@@ -253,7 +260,7 @@ void net_uart_task(void *params)
                 ret = recvfrom(udp_serv_sock, buf, sizeof(buf), 0, (struct sockaddr *)&udp_peer_addr, &slen);
                 if (ret > 0)
                 {
-                    uart_write_bytes(TARGET_UART_IDX, (const char *)buf, ret);
+                    uart_write_bytes(CONFIG_TARGET_UART_IDX, (const char *)buf, ret);
                     uart_tx_count += ret;
                 }
                 else
@@ -267,7 +274,7 @@ void net_uart_task(void *params)
                 ret = recv(tcp_client_sock, buf, sizeof(buf), MSG_DONTWAIT);
                 if (ret > 0)
                 {
-                    uart_write_bytes(TARGET_UART_IDX, (const char *)buf, ret);
+                    uart_write_bytes(CONFIG_TARGET_UART_IDX, (const char *)buf, ret);
                     uart_tx_count += ret;
                 }
                 else
@@ -307,7 +314,7 @@ void uart_rx_task(void *parameters)
                 uart_queue_full_cnt++;
             }
 
-            bufpos = uart_read_bytes(TARGET_UART_IDX, &buf[bufpos], sizeof(buf) - bufpos, 0);
+            bufpos = uart_read_bytes(CONFIG_TARGET_UART_IDX, &buf[bufpos], sizeof(buf) - bufpos, 0);
 
             // DEBUG("uart rx:%d\n", bufpos);
             if (bufpos > 0)
@@ -371,7 +378,7 @@ void debug_putc(char c, int flush)
 
 void platform_set_baud(uint32_t baud)
 {
-    uart_set_baudrate(TARGET_UART_IDX, baud);
+    uart_set_baudrate(CONFIG_TARGET_UART_IDX, baud);
     nvs_set_u32(h_nvs_conf, "uartbaud", baud);
 }
 
@@ -380,7 +387,7 @@ bool cmd_setbaud(target *t, int argc, const char **argv)
     if (argc == 1)
     {
         uint32_t baud;
-        uart_get_baudrate(TARGET_UART_IDX, &baud);
+        uart_get_baudrate(CONFIG_TARGET_UART_IDX, &baud);
         gdb_outf("Current baud: %d\n", baud);
     }
     if (argc == 2)
@@ -600,15 +607,15 @@ void wifi_init_sta()
 // wifi_softap_set_dhcps_offer_option(OFFER_ROUTER, 0)
 void uart_send_break()
 {
-    uart_wait_tx_done(TARGET_UART_IDX, 10);
+    uart_wait_tx_done(CONFIG_TARGET_UART_IDX, 10);
 
     uint32_t baud;
-    uart_get_baudrate(TARGET_UART_IDX, &baud);    // save current baudrate
-    uart_set_baudrate(TARGET_UART_IDX, baud / 2); // set half the baudrate
+    uart_get_baudrate(CONFIG_TARGET_UART_IDX, &baud);    // save current baudrate
+    uart_set_baudrate(CONFIG_TARGET_UART_IDX, baud / 2); // set half the baudrate
     char b = 0x00;
-    uart_write_bytes(TARGET_UART_IDX, &b, 1);
-    uart_wait_tx_done(TARGET_UART_IDX, 10);
-    uart_set_baudrate(TARGET_UART_IDX, baud); // restore baudrate
+    uart_write_bytes(CONFIG_TARGET_UART_IDX, &b, 1);
+    uart_wait_tx_done(CONFIG_TARGET_UART_IDX, 10);
+    uart_set_baudrate(CONFIG_TARGET_UART_IDX, baud); // restore baudrate
 }
 
 int vprintf_noop(const char *s, va_list va)
@@ -676,8 +683,8 @@ void app_main(void)
 
     esp_wifi_set_ps(WIFI_PS_NONE);
 
-#if defined(TARGET_UART_IDX)
-    ESP_LOGI(__func__, "configuring UART%d for target", TARGET_UART_IDX);
+#if !defined(CONFIG_TARGET_UART_NONE)
+    ESP_LOGI(__func__, "configuring UART%d for target", CONFIG_TARGET_UART_IDX);
 
     uint32_t baud = 230400;
     nvs_get_u32(h_nvs_conf, "uartbaud", &baud);
@@ -689,9 +696,9 @@ void app_main(void)
         .stop_bits = UART_STOP_BITS_1,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
     };
-    ESP_ERROR_CHECK(uart_driver_install(TARGET_UART_IDX, 4096, 256, 16, &uart_event_queue, 0));
-    ESP_ERROR_CHECK(uart_param_config(TARGET_UART_IDX, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(TARGET_UART_IDX, CONFIG_UART_RX_GPIO, CONFIG_UART_TX_GPIO,
+    ESP_ERROR_CHECK(uart_driver_install(CONFIG_TARGET_UART_IDX, 4096, 256, 16, &uart_event_queue, 0));
+    ESP_ERROR_CHECK(uart_param_config(CONFIG_TARGET_UART_IDX, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(CONFIG_TARGET_UART_IDX, CONFIG_UART_RX_GPIO, CONFIG_UART_TX_GPIO,
                                  UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
     const uart_intr_config_t uart_intr = {
@@ -701,7 +708,7 @@ void app_main(void)
         .txfifo_empty_intr_thresh = 10,
     };
 
-    ESP_ERROR_CHECK(uart_intr_config(TARGET_UART_IDX, &uart_intr));
+    ESP_ERROR_CHECK(uart_intr_config(CONFIG_TARGET_UART_IDX, &uart_intr));
 #endif
 
     platform_init();
@@ -709,7 +716,7 @@ void app_main(void)
     xTaskCreate(&dbg_task, "dbg_main", 2048, NULL, 4, NULL);
     xTaskCreate(&gdb_net_task, "gdb_net", 2048, NULL, 1, NULL);
 
-#if defined(TARGET_UART_IDX)
+#if !defined(CONFIG_TARGET_UART_NONE)
     xTaskCreate(&uart_rx_task, "uart_rx_task", 1200, NULL, 5, NULL);
     xTaskCreate(&net_uart_task, "net_uart_task", 1200, NULL, 5, NULL);
 #endif

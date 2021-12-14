@@ -73,3 +73,6 @@ protected:
 };
 
 #define GDB_LOCK() GDBLock gdb_lock
+
+// The index in the pthread local storage buffer for the `this` object
+#define GDB_TLS_INDEX 1

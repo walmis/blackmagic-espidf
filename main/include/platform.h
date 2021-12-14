@@ -29,8 +29,6 @@
 
 #include "esp_log.h"
 #include "esp_attr.h"
-// #include "esp8266/pin_mux_register.h"
-// #include "esp8266/gpio_struct.h"
 
 void platform_buffer_flush(void);
 void platform_set_baud(uint32_t baud);
@@ -39,64 +37,73 @@ void platform_set_baud(uint32_t baud);
 #define SET_IDLE_STATE(state)
 #define SET_ERROR_STATE(state)
 
-#define ENABLE_DEBUG
-#define DEBUG(x, ...) do { TRIM(out, x); ESP_LOGD("BMP", out, ##__VA_ARGS__); } while (0)
-
+#define ENABLE_DEBUG 1
+#define DEBUG(x, ...)                        \
+	do                                       \
+	{                                        \
+		TRIM(out, x);                        \
+		ESP_LOGD("BMP", out, ##__VA_ARGS__); \
+	} while (0)
 
 #include "timing.h"
 #include "driver/gpio.h"
 
-#define TMS_SET_MODE() do { } while (0)
+#define TMS_SET_MODE() \
+	do                 \
+	{                  \
+	} while (0)
 
 // no-connects on ESP-01: 12,13,14,15
 #define TMS_PIN CONFIG_TMS_SWDIO_GPIO
 #define TCK_PIN CONFIG_TCK_SWCLK_GPIO
 
-
 #define TDI_PIN CONFIG_TDI_GPIO // "
 #define TDO_PIN CONFIG_TDO_GPIO // "
 
-#if defined(CONFIG_TARGET_UART_NONE)
-/* No UART */
-#elif defined(CONFIG_TARGET_UART0)
-#error "UART0 not yet supported"
-#define TARGET_UART_IDX 0
-#define TARGET_UART_GPIO_MATRIX 14
-#elif defined(CONFIG_TARGET_UART1)
-#define TARGET_UART_IDX 1
-#define TARGET_UART_GPIO_MATRIX 17
-#elif defined(CONFIG_TARGET_UART2)
-#define TARGET_UART_IDX 2
-#define TARGET_UART_GPIO_MATRIX 198
-#else
-#error "Unsupported UART target"
-#endif
-
 #define SWDIO_PIN CONFIG_TMS_SWDIO_GPIO
 #define SWCLK_PIN CONFIG_TCK_SWCLK_GPIO
+#define SRST_PIN CONFIG_SRST_GPIO
 
 #define SWCLK_PORT 0
 #define SWDIO_PORT 0
 
-#define gpio_enable(pin, mode) do { gpio_set_direction(pin, mode); } while(0)
-#define gpio_set(port, pin) do {GPIO.out_w1ts = (0x1 << pin); } while(0)
-#define gpio_clear(port, pin) do{GPIO.out_w1tc = (0x1 << pin);} while(0)
-#define gpio_get(port, pin) ((GPIO.in >> pin)&0x1)
-#define gpio_set_val(port, pin, value) if(value) { gpio_set(port, pin); } else { gpio_clear(port, pin); }	
+#define gpio_enable(pin, mode)         \
+	do                                 \
+	{                                  \
+		gpio_set_direction(pin, mode); \
+	} while (0)
+#define gpio_set(port, pin)           \
+	do                                \
+	{                                 \
+		GPIO.out_w1ts = (0x1 << pin); \
+	} while (0)
+#define gpio_clear(port, pin)         \
+	do                                \
+	{                                 \
+		GPIO.out_w1tc = (0x1 << pin); \
+	} while (0)
+#define gpio_get(port, pin) ((GPIO.in >> pin) & 0x1)
+#define gpio_set_val(port, pin, value) \
+	if (value)                         \
+	{                                  \
+		gpio_set(port, pin);           \
+	}                                  \
+	else                               \
+	{                                  \
+		gpio_clear(port, pin);         \
+	}
 
 #define GPIO_INPUT GPIO_MODE_INPUT
 #define GPIO_OUTPUT GPIO_MODE_OUTPUT
 
-#define SWDIO_MODE_FLOAT() 			\
-		gpio_set_direction(SWDIO_PIN, GPIO_MODE_INPUT);	\
+#define SWDIO_MODE_FLOAT() \
+	gpio_set_direction(SWDIO_PIN, GPIO_MODE_INPUT);
 
+#define SWDIO_MODE_DRIVE() \
+	gpio_set_direction(SWDIO_PIN, GPIO_MODE_OUTPUT);
 
-#define SWDIO_MODE_DRIVE() 				\
-		gpio_set_direction(SWDIO_PIN, GPIO_MODE_OUTPUT);	\
-	
-
-#define PLATFORM_HAS_DEBUG 
-#define PLATFORM_IDENT "esp8266"
+#define PLATFORM_HAS_DEBUG
+#define PLATFORM_IDENT "esp32"
 #endif
 
 extern uint32_t swd_delay_cnt;

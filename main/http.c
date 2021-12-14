@@ -29,7 +29,7 @@ static HttpdFreertosInstance instance;
 
 static void on_term_recv(Websock *ws, char *data, int len, int flags)
 {
-    uart_write_bytes(TARGET_UART_IDX, data, len);
+    uart_write_bytes(CONFIG_TARGET_UART_IDX, data, len);
 }
 
 static void on_term_connect(Websock *ws)
