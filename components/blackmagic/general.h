@@ -9,7 +9,10 @@
 #undef DEBUG_GDB
 #undef DEBUG_TARGET
 
+#ifndef __FILENAME__
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#endif
+
 #define TRIM(out, in)                      \
     int __len = strlen(in);                \
     char tmp______[__len + 1];                   \
