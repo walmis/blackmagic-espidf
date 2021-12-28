@@ -7,6 +7,3 @@
 [submodule "components/blackmagic/blackmagic"]
 	path = components/blackmagic/blackmagic
 	url = https://github.com/blacksphere/blackmagic.git
-[submodule "esp-idf"]
-	path = esp-idf
-	url = https://github.com/espressif/esp-idf.git
