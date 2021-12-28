@@ -819,7 +819,7 @@ void GDB::handle_v_packet(char *packet, int plen)
     {
         GDB_LOCK();
         /* Erase Flash Memory */
-        DEBUG_GDB("Flash Erase %08lX len:%d\n", addr, len);
+        DEBUG_GDB("Flash Erase %08lX len:%ld\n", addr, len);
         if (!cur_target)
         {
             gdb_putpacketz("EFF");
@@ -849,7 +849,7 @@ void GDB::handle_v_packet(char *packet, int plen)
         // DEBUG_GDB("plen: %d(%x) %d", plen, plen, bin);
         GDB_LOCK();
         len = plen - bin;
-        DEBUG_GDB("Flash Write %08lX len:%d\n", addr, len);
+        DEBUG_GDB("Flash Write %08lX len:%ld\n", addr, len);
         // ESP_LOG_BUFFER_HEXDUMP("Flash", packet+bin, len, 3);
         if (cur_target && target_flash_write(cur_target, addr, (void *)(packet + bin), len) == 0)
         {
