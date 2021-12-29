@@ -21,74 +21,18 @@
 /* This file implements the SW-DP interface. */
 
 #define TAG "swd"
+#define TAG_LL "swd-ll"
 // #define DEBUG_SWD_TRANSACTIONS
+
+#include "general.h"
+#include "timing.h"
 
 #include <stdint.h>
 #include <freertos/FreeRTOS.h>
+#include "adiv5.h"
 #include "hal/gpio_ll.h"
 #include "hal/gpio_hal.h"
 #include "driver/spi_master.h"
-esp_err_t gpio_set_direction(gpio_num_t gpio_num, gpio_mode_t mode);
-
-enum align
-{
-    ALIGN_BYTE = 0,
-    ALIGN_HALFWORD = 1,
-    ALIGN_WORD = 2,
-    ALIGN_DWORD = 3
-};
-
-/* Try to keep this somewhat absract for later adding SW-DP */
-struct ADIv5_AP_s;
-typedef struct ADIv5_DP_s
-{
-    int refcnt;
-
-    uint32_t idcode;
-    uint32_t targetid; /* Contains IDCODE for DPv2 devices.*/
-
-    void (*seq_out)(uint32_t MS, int ticks);
-    void (*seq_out_parity)(uint32_t MS, int ticks);
-    uint32_t (*seq_in)(int ticks);
-    bool (*seq_in_parity)(uint32_t *ret, int ticks);
-    /* dp_low_write returns true if no OK resonse, but ignores errors */
-    bool (*dp_low_write)(struct ADIv5_DP_s *dp, uint16_t addr,
-                         const uint32_t data);
-    uint32_t (*dp_read)(struct ADIv5_DP_s *dp, uint16_t addr);
-    uint32_t (*error)(struct ADIv5_DP_s *dp);
-    uint32_t (*low_access)(struct ADIv5_DP_s *dp, uint8_t RnW,
-                           uint16_t addr, uint32_t value);
-    void (*abort)(struct ADIv5_DP_s *dp, uint32_t abort);
-
-    uint32_t (*ap_read)(struct ADIv5_AP_s *ap, uint16_t addr);
-    void (*ap_write)(struct ADIv5_AP_s *ap, uint16_t addr, uint32_t value);
-
-    void (*mem_read)(struct ADIv5_AP_s *ap, void *dest, uint32_t src, size_t len);
-    void (*mem_write_sized)(struct ADIv5_AP_s *ap, uint32_t dest, const void *src,
-                            size_t len, enum align align);
-    uint8_t dp_jd_index;
-    uint8_t fault;
-} ADIv5_DP_t;
-typedef struct ADIv5_DP_s ADIv5_DP_t;
-
-struct ADIv5_AP_s
-{
-    int refcnt;
-
-    ADIv5_DP_t *dp;
-    uint8_t apsel;
-
-    uint32_t idr;
-    uint32_t base;
-    uint32_t csw;
-    uint32_t ap_cortexm_demcr; /* Copy of demcr when starting */
-    uint32_t ap_storage;       /* E.g to hold STM32F7 initial DBGMCU_CR value.*/
-    uint16_t ap_designer;
-    uint16_t ap_partno;
-};
-typedef struct ADIv5_AP_s ADIv5_AP_t;
-
-// static portMUX_TYPE swd_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 #define PIN_NUM_SWDIO 21
 #define PIN_NUM_SWCLK 25
@@ -99,7 +43,7 @@ static spi_device_handle_t swd_spi_handle;
 enum
 {
     SWDIO_STATUS_FLOAT = 0,
-    SWDIO_STATUS_DRIVE
+    SWDIO_STATUS_DRIVE,
 };
 
 static IRAM_ATTR void swdptap_turnaround(int dir)
@@ -114,7 +58,7 @@ static IRAM_ATTR void swdptap_turnaround(int dir)
     olddir = dir;
 
 #ifdef DEBUG_SWD_TRANSACTIONS
-    ESP_LOGI("swd-ll", "%s", dir ? "\n-> " : "\n<- ");
+    ESP_LOGI(TAG_LL, "%s", dir ? "\n-> " : "\n<- ");
 #endif
     spi_transaction_t t = {
         .rxlength = (dir == SWDIO_STATUS_FLOAT),
@@ -140,7 +84,7 @@ static IRAM_ATTR uint32_t swdptap_seq_in(int ticks)
     ESP_ERROR_CHECK(err);
 
 #ifdef DEBUG_SWD_TRANSACTIONS
-    ESP_LOGI("swd-ll", "seq_in: %d bits %08x", ticks, *((uint32_t *)t.rx_data));
+    ESP_LOGI(TAG_LL, "seq_in: %d bits %08x", ticks, *((uint32_t *)t.rx_data));
 #endif
     return *((uint32_t *)t.rx_data);
 }
@@ -168,7 +112,7 @@ static IRAM_ATTR bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
 
     int parity = __builtin_popcount(*ret) + (t2.rx_data[0] & 1);
 #ifdef DEBUG_SWD_TRANSACTIONS
-    ESP_LOGI("swd-ll", "seq_in_parity: %d bits %x %d", ticks, *ret, parity);
+    ESP_LOGI(TAG_LL, "seq_in_parity: %d bits %x %d", ticks, *ret, parity);
 #endif
     return (parity & 1);
 }
@@ -178,7 +122,7 @@ static IRAM_ATTR void swdptap_seq_out(uint32_t MS, int ticks)
     esp_err_t err;
     swdptap_turnaround(SWDIO_STATUS_DRIVE);
 #ifdef DEBUG_SWD_TRANSACTIONS
-    ESP_LOGI("swd-ll", "seq_out: %d bits %x", ticks, MS);
+    ESP_LOGI(TAG_LL, "seq_out: %d bits %x", ticks, MS);
 #endif
     spi_transaction_t t = {
         .length = ticks,
@@ -195,7 +139,7 @@ static IRAM_ATTR void swdptap_seq_out_parity(uint32_t MS, int ticks)
     int parity = __builtin_popcount(MS);
     swdptap_turnaround(SWDIO_STATUS_DRIVE);
 #ifdef DEBUG_SWD_TRANSACTIONS
-    ESP_LOGI("swd-ll", "seq_out_parity: %d bits %x %d", ticks, MS, parity);
+    ESP_LOGI(TAG_LL, "seq_out_parity: %d bits %x %d", ticks, MS, parity);
 #endif
 
     spi_transaction_t t1 = {
@@ -280,3 +224,21 @@ cleanup:
     spi_bus_remove_device(swd_spi_handle);
     return -1;
 }
+
+// int swdptap_set_frequency(uint32_t frequency) {
+//     spi_hal_timing_param_t timing_param = {
+//         .half_duplex = 1,
+//         .no_compensate = 0,
+//         .clock_speed_hz = frequency,
+//         .duty_cycle = 128,
+//         .input_delay_ns = 0,
+//         .use_gpio = 1,
+//     };
+
+//     //output values of timing configuration
+//     spi_hal_timing_conf_t temp_timing_conf;
+//     int freq;
+//     esp_err_t ret = spi_hal_cal_clock_conf(&timing_param, &freq, &temp_timing_conf);
+//     SPI_CHECK(ret==ESP_OK, "assigned clock speed not supported", ret);
+
+// }
