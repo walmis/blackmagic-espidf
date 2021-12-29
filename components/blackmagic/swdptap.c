@@ -20,49 +20,81 @@
 
 /* This file implements the SW-DP interface. */
 
-#include "general.h"
-#include "timing.h"
+#define TAG "swd"
+// #define DEBUG_SWD_TRANSACTIONS
+
+#include <stdint.h>
+#include <freertos/FreeRTOS.h>
 #include "hal/gpio_ll.h"
 #include "hal/gpio_hal.h"
-#include <freertos/FreeRTOS.h>
-#include "adiv5.h"
+#include "driver/spi_master.h"
+esp_err_t gpio_set_direction(gpio_num_t gpio_num, gpio_mode_t mode);
 
-static portMUX_TYPE swd_spinlock = portMUX_INITIALIZER_UNLOCKED;
-
-static IRAM_ATTR void swd_delay(void)
+enum align
 {
-    int cnt;
-    // Force domain syncrhonization
-    (void)GPIO.in;
-    for (cnt = swd_delay_cnt; --cnt > 0;)
-    {
-        asm("nop");
-    }
-}
+    ALIGN_BYTE = 0,
+    ALIGN_HALFWORD = 1,
+    ALIGN_WORD = 2,
+    ALIGN_DWORD = 3
+};
 
-static IRAM_ATTR void swclk_high(void)
+/* Try to keep this somewhat absract for later adding SW-DP */
+struct ADIv5_AP_s;
+typedef struct ADIv5_DP_s
 {
-    GPIO.out_w1ts = (0x1 << SWCLK_PIN);
-    swd_delay();
-}
+    int refcnt;
 
-static IRAM_ATTR void swclk_low(void)
+    uint32_t idcode;
+    uint32_t targetid; /* Contains IDCODE for DPv2 devices.*/
+
+    void (*seq_out)(uint32_t MS, int ticks);
+    void (*seq_out_parity)(uint32_t MS, int ticks);
+    uint32_t (*seq_in)(int ticks);
+    bool (*seq_in_parity)(uint32_t *ret, int ticks);
+    /* dp_low_write returns true if no OK resonse, but ignores errors */
+    bool (*dp_low_write)(struct ADIv5_DP_s *dp, uint16_t addr,
+                         const uint32_t data);
+    uint32_t (*dp_read)(struct ADIv5_DP_s *dp, uint16_t addr);
+    uint32_t (*error)(struct ADIv5_DP_s *dp);
+    uint32_t (*low_access)(struct ADIv5_DP_s *dp, uint8_t RnW,
+                           uint16_t addr, uint32_t value);
+    void (*abort)(struct ADIv5_DP_s *dp, uint32_t abort);
+
+    uint32_t (*ap_read)(struct ADIv5_AP_s *ap, uint16_t addr);
+    void (*ap_write)(struct ADIv5_AP_s *ap, uint16_t addr, uint32_t value);
+
+    void (*mem_read)(struct ADIv5_AP_s *ap, void *dest, uint32_t src, size_t len);
+    void (*mem_write_sized)(struct ADIv5_AP_s *ap, uint32_t dest, const void *src,
+                            size_t len, enum align align);
+    uint8_t dp_jd_index;
+    uint8_t fault;
+} ADIv5_DP_t;
+typedef struct ADIv5_DP_s ADIv5_DP_t;
+
+struct ADIv5_AP_s
 {
-    GPIO.out_w1tc = (0x1 << SWCLK_PIN);
-    swd_delay();
-}
+    int refcnt;
 
-static IRAM_ATTR void swdio_set(uint32_t val) {
-    if (val) {
-        GPIO.out_w1ts = (0x1 << SWDIO_PIN);
-    } else {
-        GPIO.out_w1tc = (0x1 << SWDIO_PIN);
-    }
-}
+    ADIv5_DP_t *dp;
+    uint8_t apsel;
 
-static IRAM_ATTR int swdio_get(void) {
-    return GPIO.in & SWDIO_PIN;
-}
+    uint32_t idr;
+    uint32_t base;
+    uint32_t csw;
+    uint32_t ap_cortexm_demcr; /* Copy of demcr when starting */
+    uint32_t ap_storage;       /* E.g to hold STM32F7 initial DBGMCU_CR value.*/
+    uint16_t ap_designer;
+    uint16_t ap_partno;
+};
+typedef struct ADIv5_AP_s ADIv5_AP_t;
+
+// static portMUX_TYPE swd_spinlock = portMUX_INITIALIZER_UNLOCKED;
+
+#define PIN_NUM_SWDIO 21
+#define PIN_NUM_SWCLK 25
+#define PIN_NUM_SRST 23
+#define SWD_SPI_BUS_ID HSPI_HOST
+static spi_device_handle_t swd_spi_handle;
 
 enum
 {
@@ -70,278 +102,181 @@ enum
     SWDIO_STATUS_DRIVE
 };
 
-static IRAM_ATTR void swdptap_turnaround(int dir) __attribute__((optimize(3)));
-static IRAM_ATTR uint32_t swdptap_seq_in(int ticks) __attribute__((optimize(3)));
-static IRAM_ATTR bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
-    __attribute__((optimize(3)));
-static IRAM_ATTR void swdptap_seq_out(uint32_t MS, int ticks)
-    __attribute__((optimize(3)));
-static IRAM_ATTR void swdptap_seq_out_parity(uint32_t MS, int ticks)
-    __attribute__((optimize(3)));
-
-static void swdptap_turnaround(int dir)
+static IRAM_ATTR void swdptap_turnaround(int dir)
 {
-    static int olddir = SWDIO_STATUS_FLOAT;
+    static int olddir = SWDIO_STATUS_DRIVE;
 
     /* Don't turnaround if direction not changing */
     if (dir == olddir)
+    {
         return;
+    }
     olddir = dir;
 
-#ifdef DEBUG_SWD_BITS
-    DEBUG("%s", dir ? "\n-> " : "\n<- ");
+#ifdef DEBUG_SWD_TRANSACTIONS
+    ESP_LOGI("swd-ll", "%s", dir ? "\n-> " : "\n<- ");
 #endif
+    spi_transaction_t t = {
+        .rxlength = (dir == SWDIO_STATUS_FLOAT),
+        .length = (dir == SWDIO_STATUS_DRIVE),
+        .flags = (dir == SWDIO_STATUS_FLOAT) ? SPI_TRANS_USE_RXDATA : SPI_TRANS_USE_TXDATA,
+    };
 
-    if (dir == SWDIO_STATUS_FLOAT)
-    {
-        GPIO.enable_w1tc = (0x1 << SWDIO_PIN);
-        (void)GPIO.enable;
-        // SWDIO_MODE_FLOAT();
-    }
-
-    // gpio_set(SWCLK_PORT, SWCLK_PIN);
-    swclk_high();
-
-    // gpio_clear(SWCLK_PORT, SWCLK_PIN);
-    swclk_low();
-
-    if (dir == SWDIO_STATUS_DRIVE)
-    {
-        GPIO.enable_w1ts = (0x1 << SWDIO_PIN);
-        (void)GPIO.enable;
-        // SWDIO_MODE_DRIVE();
-    }
+    esp_err_t err = spi_device_polling_transmit(swd_spi_handle, &t);
+    ESP_ERROR_CHECK(err);
 }
 
-static uint32_t swdptap_seq_in(int ticks)
+static IRAM_ATTR uint32_t swdptap_seq_in(int ticks)
 {
-    uint32_t index = 1;
-    uint32_t ret = 0;
-    int len = ticks;
-    portENTER_CRITICAL(&swd_spinlock);
+    esp_err_t err;
     swdptap_turnaround(SWDIO_STATUS_FLOAT);
-    // if (swd_delay_cnt)
-    // {
-    while (len--)
-    {
-        int res;
-        // res = gpio_get(SWDIO_PORT, SWDIO_PIN);
-        res = swdio_get();
-        ret |= (res) ? index : 0;
-        index <<= 1;
 
-        // gpio_set(SWCLK_PORT, SWCLK_PIN);
-        swclk_high();
+    spi_transaction_t t = {
+        .length = 0,
+        .rxlength = ticks,
+        .flags = SPI_TRANS_USE_RXDATA,
+    };
+    err = spi_device_polling_transmit(swd_spi_handle, &t);
+    ESP_ERROR_CHECK(err);
 
-        // gpio_clear(SWCLK_PORT, SWCLK_PIN);
-        swclk_low();
-    }
-    // }
-    // else
-    // {
-    //     volatile int res;
-    //     while (len--)
-    //     {
-    //         // res = gpio_get(SWDIO_PORT, SWDIO_PIN);
-    //         res = gpio_get_level(SWDIO_PIN);
-
-    //         // gpio_set(SWCLK_PORT, SWCLK_PIN);
-    //         gpio_ll_set_level(GPIO_HAL_GET_HW(GPIO_PORT_0), SWCLK_PIN, 1);
-    //         ret |= (res) ? index : 0;
-    //         index <<= 1;
-
-    //         gpio_ll_set_level(GPIO_HAL_GET_HW(GPIO_PORT_0), SWCLK_PIN, 0);
-    //         // gpio_clear(SWCLK_PORT, SWCLK_PIN);
-    //     }
-    // }
-#ifdef DEBUG_SWD_BITS
-    for (int i = 0; i < len; i++)
-        DEBUG("%d", (ret & (1 << i)) ? 1 : 0);
+#ifdef DEBUG_SWD_TRANSACTIONS
+    ESP_LOGI("swd-ll", "seq_in: %d bits %08x", ticks, *((uint32_t *)t.rx_data));
 #endif
-    portEXIT_CRITICAL(&swd_spinlock);
-    // ESP_LOGI("swd", "seq_in: %d bits %x", ticks, ret);
-    return ret;
+    return *((uint32_t *)t.rx_data);
 }
 
-static bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
+static IRAM_ATTR bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
 {
-    uint32_t index = 1;
-    uint32_t res = 0;
-    bool bit;
-    int len = ticks;
-    portENTER_CRITICAL(&swd_spinlock);
-
+    esp_err_t err;
     swdptap_turnaround(SWDIO_STATUS_FLOAT);
-    // if (swd_delay_cnt)
-    // {
-    while (len--)
-    {
-        // bit = gpio_get(SWDIO_PORT, SWDIO_PIN);
-        bit = swdio_get();
-        res |= (bit) ? index : 0;
-        index <<= 1;
 
-        // gpio_set(SWCLK_PORT, SWCLK_PIN);
-        swclk_high();
+    spi_transaction_t t1 = {
+        .length = 0,
+        .rxlength = ticks,
+        .rx_buffer = ret,
+    };
+    err = spi_device_polling_transmit(swd_spi_handle, &t1);
+    ESP_ERROR_CHECK(err);
 
-        // gpio_clear(SWCLK_PORT, SWCLK_PIN);
-        swclk_low();
-    }
-    // }
-    // else
-    // {
-    //     while (len--)
-    //     {
-    //         // bit = gpio_get(SWDIO_PORT, SWDIO_PIN);
-    //         bit = gpio_get_level(SWDIO_PIN);
-    //         res |= (bit) ? index : 0;
-    //         index <<= 1;
+    spi_transaction_t t2 = {
+        .length = 0,
+        .rxlength = 1,
+        .flags = SPI_TRANS_USE_RXDATA,
+    };
+    err = spi_device_polling_transmit(swd_spi_handle, &t2);
+    ESP_ERROR_CHECK(err);
 
-    //         // gpio_set(SWCLK_PORT, SWCLK_PIN);
-    //         gpio_ll_set_level(GPIO_HAL_GET_HW(GPIO_PORT_0), SWCLK_PIN, 1);
-
-    //         // gpio_clear(SWCLK_PORT, SWCLK_PIN);
-    //         gpio_ll_set_level(GPIO_HAL_GET_HW(GPIO_PORT_0), SWCLK_PIN, 0);
-    //     }
-    // }
-    int parity = __builtin_popcount(res);
-    // bit = gpio_get(SWDIO_PORT, SWDIO_PIN);
-    bit = gpio_get_level(SWDIO_PIN);
-    parity += (bit) ? 1 : 0;
-
-    // gpio_set(SWCLK_PORT, SWCLK_PIN);
-    swclk_high();
-
-    // gpio_clear(SWCLK_PORT, SWCLK_PIN);
-    swclk_low();
-
-#ifdef DEBUG_SWD_BITS
-    for (int i = 0; i < len; i++)
-        DEBUG("%d", (res & (1 << i)) ? 1 : 0);
+    int parity = __builtin_popcount(*ret) + (t2.rx_data[0] & 1);
+#ifdef DEBUG_SWD_TRANSACTIONS
+    ESP_LOGI("swd-ll", "seq_in_parity: %d bits %x %d", ticks, *ret, parity);
 #endif
-    *ret = res;
-    /* Terminate the read cycle now */
-    swdptap_turnaround(SWDIO_STATUS_DRIVE);
-    portEXIT_CRITICAL(&swd_spinlock);
-
-    // ESP_LOGI("swd", "seq_in_parity: %d bits %x %d", ticks, res, parity);
     return (parity & 1);
 }
 
-static void swdptap_seq_out(uint32_t MS, int ticks)
+static IRAM_ATTR void swdptap_seq_out(uint32_t MS, int ticks)
 {
-    // ESP_LOGI("swd", "seq_out: %d bits %x", ticks, MS);
-#ifdef DEBUG_SWD_BITS
-    for (int i = 0; i < ticks; i++)
-        DEBUG("%d", (MS & (1 << i)) ? 1 : 0);
-#endif
-    portENTER_CRITICAL(&swd_spinlock);
+    esp_err_t err;
     swdptap_turnaround(SWDIO_STATUS_DRIVE);
-    // gpio_set_val(SWDIO_PORT, SWDIO_PIN, MS & 1);
-    swdio_set(MS & 1);
-    // if (swd_delay_cnt)
-    // {
-    while (ticks--)
-    {
-        // gpio_set(SWCLK_PORT, SWCLK_PIN);
-        swclk_high();
-
-        MS >>= 1;
-        // gpio_set_val(SWDIO_PORT, SWDIO_PIN, MS & 1);
-        swdio_set(MS & 1);
-
-        // gpio_clear(SWCLK_PORT, SWCLK_PIN);
-        swclk_low();
-    }
-    // }
-    // else
-    // {
-    //     while (ticks--)
-    //     {
-    //         // gpio_set(SWCLK_PORT, SWCLK_PIN);
-    //         gpio_ll_set_level(GPIO_HAL_GET_HW(GPIO_PORT_0), SWCLK_PIN, 1);
-
-    //         MS >>= 1;
-    //         // gpio_set_val(SWDIO_PORT, SWDIO_PIN, MS & 1);
-    //         gpio_set_level(SWDIO_PIN, MS & 1);
-
-    //         // gpio_clear(SWCLK_PORT, SWCLK_PIN);
-    //         gpio_ll_set_level(GPIO_HAL_GET_HW(GPIO_PORT_0), SWCLK_PIN, 0);
-    //     }
-    // }
-    portEXIT_CRITICAL(&swd_spinlock);
+#ifdef DEBUG_SWD_TRANSACTIONS
+    ESP_LOGI("swd-ll", "seq_out: %d bits %x", ticks, MS);
+#endif
+    spi_transaction_t t = {
+        .length = ticks,
+        .rxlength = 0,
+        .tx_buffer = &MS,
+    };
+    err = spi_device_polling_transmit(swd_spi_handle, &t);
+    ESP_ERROR_CHECK(err);
 }
 
-static void swdptap_seq_out_parity(uint32_t MS, int ticks)
+static IRAM_ATTR void swdptap_seq_out_parity(uint32_t MS, int ticks)
 {
+    esp_err_t err;
     int parity = __builtin_popcount(MS);
-    // ESP_LOGI("swd", "seq_out_parity: %d bits %x %d", ticks, MS, parity);
-#ifdef DEBUG_SWD_BITS
-    for (int i = 0; i < ticks; i++)
-        DEBUG("%d", (MS & (1 << i)) ? 1 : 0);
-#endif
-    portENTER_CRITICAL(&swd_spinlock);
     swdptap_turnaround(SWDIO_STATUS_DRIVE);
+#ifdef DEBUG_SWD_TRANSACTIONS
+    ESP_LOGI("swd-ll", "seq_out_parity: %d bits %x %d", ticks, MS, parity);
+#endif
 
-    // gpio_set_val(SWDIO_PORT, SWDIO_PIN, MS & 1);
-    // gpio_set_level(SWDIO_PIN, MS & 1);
-    swdio_set(MS & 1);
-    MS >>= 1;
+    spi_transaction_t t1 = {
+        .length = ticks,
+        .rxlength = 0,
+        .tx_buffer = &MS,
+    };
+    err = spi_device_polling_transmit(swd_spi_handle, &t1);
+    ESP_ERROR_CHECK(err);
 
-    // if (swd_delay_cnt)
-    // {
-    while (ticks--)
-    {
-        // gpio_set(SWCLK_PORT, SWCLK_PIN);
-        swclk_high();
-
-        // gpio_set_val(SWDIO_PORT, SWDIO_PIN, MS & 1);
-        // gpio_set_level(SWDIO_PIN, MS & 1);
-        swdio_set(MS & 1);
-        MS >>= 1;
-
-        // gpio_clear(SWCLK_PORT, SWCLK_PIN);
-        swclk_low();
-    }
-    // }
-    // else
-    // {
-    //     while (ticks--)
-    //     {
-    //         // gpio_set(SWCLK_PORT, SWCLK_PIN);
-    //         gpio_ll_set_level(GPIO_HAL_GET_HW(GPIO_PORT_0), SWCLK_PIN, 1);
-
-    //         // gpio_set_val(SWDIO_PORT, SWDIO_PIN, MS & 1);
-    //         gpio_set_level(SWDIO_PIN, MS & 1);
-    //         MS >>= 1;
-
-    //         // gpio_clear(SWCLK_PORT, SWCLK_PIN);
-    //         gpio_ll_set_level(GPIO_HAL_GET_HW(GPIO_PORT_0), SWCLK_PIN, 0);
-    //     }
-    // }
-    // gpio_set_val(SWDIO_PORT, SWDIO_PIN, parity & 1);
-    gpio_set_level(SWDIO_PIN, parity & 1);
-
-    // gpio_set(SWCLK_PORT, SWCLK_PIN);
-    swclk_high();
-
-    // gpio_clear(SWCLK_PORT, SWCLK_PIN);
-    swclk_low();
-
-    portEXIT_CRITICAL(&swd_spinlock);
+    spi_transaction_t t2 = {
+        .length = 1,
+        .rxlength = 0,
+        .flags = SPI_TRANS_USE_TXDATA,
+        .tx_data = {parity},
+    };
+    err = spi_device_polling_transmit(swd_spi_handle, &t2);
+    ESP_ERROR_CHECK(err);
 }
 
 int swdptap_init(ADIv5_DP_t *dp)
 {
+    static bool initialized = false;
+
     dp->seq_in = swdptap_seq_in;
     dp->seq_in_parity = swdptap_seq_in_parity;
     dp->seq_out = swdptap_seq_out;
     dp->seq_out_parity = swdptap_seq_out_parity;
 
-    gpio_set_direction(SRST_PIN, GPIO_MODE_OUTPUT);
-    gpio_set_direction(SWCLK_PIN, GPIO_MODE_OUTPUT);
-    gpio_set_direction(SWDIO_PIN, GPIO_MODE_INPUT_OUTPUT);
-    swclk_low();
+    if (initialized) {
+        return 0;
+    }
+    esp_err_t ret;
 
+    ESP_LOGI(TAG, "Initializing bus SPI%d...", SWD_SPI_BUS_ID + 1);
+    const spi_bus_config_t buscfg = {
+        .miso_io_num = -1,
+        .mosi_io_num = PIN_NUM_SWDIO,
+        .sclk_io_num = PIN_NUM_SWCLK,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        // Maximum transfer size is in bytes. We define 5 bytes here because
+        // the system will provide us at most one uint32_t of data, and we
+        // sometimes need to add a parity bit.
+        .max_transfer_sz = 5,
+    };
+    // Initialize the SPI bus
+    // Note: DMA may need to be disabled --
+    // https://docs.espressif.com/projects/esp-idf/en/latest/api-reference/peripherals/spi_master.html#known-issues
+    ret = spi_bus_initialize(SWD_SPI_BUS_ID, &buscfg, SPI_DMA_DISABLED);
+    ESP_ERROR_CHECK(ret);
+
+    const spi_device_interface_config_t devcfg = {
+        .clock_speed_hz = 5 * 1000 * 1000,
+        .mode = 3, // SPI mode 0
+        .spics_io_num = -1,
+        .queue_size = 1,
+        .flags = SPI_DEVICE_HALFDUPLEX | SPI_DEVICE_3WIRE | SPI_DEVICE_BIT_LSBFIRST,
+        // .pre_cb = cs_high,
+        // .post_cb = cs_low,
+        .input_delay_ns = 0,
+    };
+
+    // Attach the SWD device to the SPI bus
+    ESP_LOGI(TAG, "Adding interface to SPI bus...");
+    ret = spi_bus_add_device(SWD_SPI_BUS_ID, &devcfg, &swd_spi_handle);
+    if (ret != ESP_OK)
+    {
+        goto cleanup;
+    }
+
+    gpio_set_direction(PIN_NUM_SRST, GPIO_MODE_OUTPUT);
+
+    // Acquire the bus, and don't release it
+    ret = spi_device_acquire_bus(swd_spi_handle, portMAX_DELAY);
+    ESP_ERROR_CHECK(ret);
+
+    initialized = true;
     return 0;
+
+cleanup:
+    spi_bus_remove_device(swd_spi_handle);
+    return -1;
 }
