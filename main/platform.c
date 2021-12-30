@@ -71,23 +71,23 @@ uint32_t swd_delay_cnt;
 
 void platform_max_frequency_set(uint32_t freq)
 {
-    if (freq < 50000)
+    if (freq < 100)
     {
         return;
     }
-
-    int cnt = (160000000L - SWD_TOTAL_CYCLES * (int)freq) / (SWD_CYCLES_PER_CLOCK * (int)freq);
-    if (cnt < 0)
+    if (freq > 48 * 1000 * 1000)
     {
-        cnt = 0;
+        return;
     }
-    swd_delay_cnt = cnt;
-    ESP_LOGI(__func__, "freq:%u set delay cycles: %d", freq, swd_delay_cnt);
+    int swdptap_set_frequency(uint32_t frequency);
+    int actual_frequency = swdptap_set_frequency(freq);
+    ESP_LOGI(__func__, "freq:%u", actual_frequency);
 }
 
 uint32_t platform_max_frequency_get(void)
 {
-    return 160000000 / (swd_delay_cnt * SWD_CYCLES_PER_CLOCK + SWD_TOTAL_CYCLES);
+    int swdptap_get_frequency(void);
+    return swdptap_get_frequency();
 }
 
 nvs_handle h_nvs_conf;
@@ -136,6 +136,16 @@ void platform_init(void)
         };
         gpio_config(&gpio_conf);
         gpio_set_level(CONFIG_TMS_SWDIO_GPIO, 1);
+    }
+    {
+        gpio_config_t gpio_conf = {
+            .pin_bit_mask = BIT64(CONFIG_SRST_GPIO),
+            .mode = GPIO_MODE_INPUT,
+            .pull_up_en = 0,
+            .pull_down_en = 0,
+            .intr_type = GPIO_INTR_DISABLE,
+        };
+        gpio_config(&gpio_conf);
     }
 }
 
@@ -715,6 +725,7 @@ void app_main(void)
 
     xTaskCreate(&dbg_task, "dbg_main", 2048, NULL, 4, NULL);
     xTaskCreate(&gdb_net_task, "gdb_net", 2048, NULL, 1, NULL);
+    // xTaskCreatePinnedToCore(&gdb_net_task, "gdb_net", 2048, NULL, 1, NULL, portNUM_PROCESSORS - 1);
 
 #if !defined(CONFIG_TARGET_UART_NONE)
     xTaskCreate(&uart_rx_task, "uart_rx_task", 1200, NULL, 5, NULL);
@@ -726,11 +737,11 @@ void app_main(void)
     ESP_LOGI(__func__, "Free heap %d", esp_get_free_heap_size());
 }
 
-#ifndef ENABLE_DEBUG
-__attribute((used)) int ets_printf(const char *__restrict c, ...)
-{
-    return 0;
-}
+// #ifndef ENABLE_DEBUG
+// __attribute((used)) int ets_printf(const char *__restrict c, ...)
+// {
+//     return 0;
+// }
 
-__attribute((used)) int printf(const char *__restrict c, ...) { return 0; }
-#endif
+// __attribute((used)) int printf(const char *__restrict c, ...) { return 0; }
+// #endif
