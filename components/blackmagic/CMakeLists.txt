@@ -7,6 +7,7 @@ idf_component_register(
              "."
     EXCLUDE_SRCS "blackmagic/src/platforms/common/cdcacm.c"
                  "blackmagic/src/platforms/common/swdptap.c"
+                 "blackmagic/src/platforms/common/jtagtap.c"
                  "blackmagic/src/target/jtagtap_generic.c"
                  "blackmagic/src/target/swdptap_generic.c"
                  "blackmagic/src/exception.c"
