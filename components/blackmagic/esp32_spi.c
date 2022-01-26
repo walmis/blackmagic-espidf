@@ -16,7 +16,7 @@ spi_dev_t *bmp_spi_hw = SPI_LL_GET_HW(BMP_SPI_BUS_ID);
 
 #define TAG "esp32-spi"
 
-static int actual_freq;
+static int actual_freq = INITIAL_FREQUENCY;
 int esp32_spi_set_frequency(uint32_t frequency)
 {
     esp_err_t ret;
@@ -76,26 +76,48 @@ void esp32_spi_mux_pin(int pin, int out_signal, int in_signal)
     {
         return;
     }
-    gpio_set_direction(pin, GPIO_MODE_INPUT_OUTPUT);
-    esp_rom_gpio_connect_out_signal(pin, out_signal, false, false);
-    esp_rom_gpio_connect_in_signal(pin, in_signal, false);
+
+    gpio_dev_t *hw = GPIO_HAL_GET_HW(GPIO_PORT_0);
+    // gpio_set_direction(pin, GPIO_MODE_INPUT_OUTPUT);
+    hw->func_in_sel_cfg[pin].val = in_signal;
+    hw->func_out_sel_cfg[pin].val = out_signal;
+    // esp_rom_gpio_connect_out_signal(pin, out_signal, false, false);
+    // esp_rom_gpio_connect_in_signal(pin, in_signal, false);
 #if CONFIG_IDF_TARGET_ESP32S2
     PIN_INPUT_ENABLE(GPIO_PIN_MUX_REG[pin]);
 #endif
-    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[pin], PIN_FUNC_GPIO);
+    // gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[pin], PIN_FUNC_GPIO);
 }
 
-int esp32_spi_init(void)
+int esp32_spi_init(int swd)
 {
     static bool initialized = false;
 
     esp_err_t ret;
 
+    // if (initialized)
+    // {
+    //     // spi_device_release_bus(bmp_spi_handle);
+
+    //     ret = spi_bus_remove_device(bmp_spi_handle);
+    //     ESP_ERROR_CHECK(ret);
+
+    //     ret = spi_bus_free(BMP_SPI_BUS_ID);
+    //     ESP_ERROR_CHECK(ret);
+
+    //     initialized = false;
+    // }
+
+    // gpio_reset_pin(CONFIG_TDI_GPIO);
+    // gpio_reset_pin(CONFIG_TDO_GPIO);
+    // gpio_reset_pin(CONFIG_TCK_SWCLK_GPIO);
+    // gpio_reset_pin(CONFIG_TMS_SWDIO_GPIO);
+
     if (!initialized)
     {
         ESP_LOGI(TAG, "Initializing bus SPI%d...", BMP_SPI_BUS_ID + 1);
         const spi_bus_config_t buscfg = {
-            .miso_io_num = -1,
+            .miso_io_num = swd ? -1 : CONFIG_TDO_GPIO,
             .mosi_io_num = CONFIG_TMS_SWDIO_GPIO,
             .sclk_io_num = CONFIG_TCK_SWCLK_GPIO,
             .quadwp_io_num = -1,
@@ -111,11 +133,11 @@ int esp32_spi_init(void)
         ESP_ERROR_CHECK(ret);
 
         const spi_device_interface_config_t devcfg = {
-            .clock_speed_hz = INITIAL_FREQUENCY,
+            .clock_speed_hz = actual_freq,
             .mode = 3, // SPI mode 3
             .spics_io_num = -1,
             .queue_size = 1,
-            .flags = SPI_DEVICE_HALFDUPLEX | SPI_DEVICE_3WIRE | SPI_DEVICE_BIT_LSBFIRST,
+            .flags = (swd ? (SPI_DEVICE_HALFDUPLEX | SPI_DEVICE_3WIRE) : 0) | SPI_DEVICE_BIT_LSBFIRST,
             .input_delay_ns = 0,
         };
 
@@ -124,50 +146,101 @@ int esp32_spi_init(void)
         ret = spi_bus_add_device(BMP_SPI_BUS_ID, &devcfg, &bmp_spi_handle);
         if (ret != ESP_OK)
         {
+            ESP_LOGI(TAG, "Unable to add interface: %d\n", ret);
             goto cleanup;
         }
 
-        // Acquire the bus, and don't release it
-        ret = spi_device_acquire_bus(bmp_spi_handle, portMAX_DELAY);
-        ESP_ERROR_CHECK(ret);
+        // Acquire the bus, and don't release it. This configures much of the hardware.
+        // ret = spi_device_acquire_bus(bmp_spi_handle, portMAX_DELAY);
+        // ESP_ERROR_CHECK(ret);
 
         initialized = 1;
     }
 
-    ESP_LOGI(TAG, "Setting SPI frequency...");
-    esp32_spi_set_frequency(INITIAL_FREQUENCY);
+    ESP_LOGI(TAG, "Setting SPI frequency to %d Hz...", actual_freq);
+    esp32_spi_set_frequency(actual_freq);
 
-    ESP_LOGI(TAG, "Unmuxing various pins...");
-    // Default these to ordinary GPIOs -- they will be reinitialized by their
-    // corresponding functions.
+    if (swd)
+    {
+        spi_ll_enable_miso(bmp_spi_hw, 1);
+        spi_ll_enable_mosi(bmp_spi_hw, 0);
+    }
+    else
+    {
+        spi_ll_enable_miso(bmp_spi_hw, 1);
+        spi_ll_enable_mosi(bmp_spi_hw, 1);
+    }
+
+    // #if SOC_SPI_SUPPORT_AS_CS
+    //     spi_ll_master_set_cksel(bmp_spi_hw, dev->cs_pin_id, dev->as_cs);
+    // #endif
+    //     spi_ll_master_set_pos_cs(bmp_spi_hw, dev->cs_pin_id, dev->positive_cs);
+
+    // SWD and JTAG are LSB protocols
+    spi_ll_set_rx_lsbfirst(bmp_spi_hw, 1);
+    spi_ll_set_tx_lsbfirst(bmp_spi_hw, 1);
+
+    spi_ll_master_set_mode(bmp_spi_hw, 3);
+
+    if (swd)
+    {
+        spi_ll_set_half_duplex(bmp_spi_hw, 1);
+        spi_ll_set_sio_mode(bmp_spi_hw, 1);
+    }
+    else
+    {
+        spi_ll_set_half_duplex(bmp_spi_hw, 0);
+        spi_ll_set_sio_mode(bmp_spi_hw, 0);
+    }
+
+    // Configure CS pin and timing
+    spi_ll_master_set_cs_setup(bmp_spi_hw, 0);
+    spi_ll_master_set_cs_hold(bmp_spi_hw, 0);
+    spi_ll_master_select_cs(bmp_spi_hw, -1);
+
+    // ESP_LOGI(TAG, "Unmuxing various pins...");
+    // // Default these to ordinary GPIOs -- they will be reinitialized by their
+    // // corresponding functions.
     gpio_reset_pin(CONFIG_TDI_GPIO);
     gpio_reset_pin(CONFIG_TDO_GPIO);
     gpio_reset_pin(CONFIG_TMS_SWDIO_GPIO);
+    gpio_reset_pin(CONFIG_TCK_SWCLK_GPIO);
 
     // gpio_iomux_out(CONFIG_TDI_GPIO, PIN_FUNC_GPIO, false);
     // // esp_rom_gpio_connect_out_signal(CONFIG_TDI_GPIO, SIG_GPIO_OUT_IDX, false, false);
     // gpio_set_direction(CONFIG_TDI_GPIO, GPIO_MODE_INPUT);
 
-    // gpio_iomux_out(CONFIG_TDO_GPIO, PIN_FUNC_GPIO, false);
-    // // esp_rom_gpio_connect_out_signal(CONFIG_TDO_GPIO, SIG_GPIO_OUT_IDX, false, false);
-    // gpio_set_direction(CONFIG_TDO_GPIO, GPIO_MODE_INPUT);
+    // Mux TDO as MISO
+    if (!swd)
+    {
+        esp32_spi_mux_pin(CONFIG_TDO_GPIO,
+                          spi_periph_signal[BMP_SPI_BUS_ID].spiq_out,
+                          spi_periph_signal[BMP_SPI_BUS_ID].spiq_in);
+    }
 
-    // gpio_iomux_out(CONFIG_TMS_SWDIO_GPIO, PIN_FUNC_GPIO, false);
-    // // esp_rom_gpio_connect_out_signal(CONFIG_TMS_SWDIO_GPIO, SIG_GPIO_OUT_IDX, false, false);
-    // gpio_set_direction(CONFIG_TMS_SWDIO_GPIO, GPIO_MODE_INPUT);
+    // Mux TDI as a GPIO for now -- it will be remuxed as necessary
+    if (!swd)
+    {
+        esp32_spi_mux_pin(CONFIG_TDI_GPIO, SIG_GPIO_OUT_IDX | (1 << 10), 128);
+    }
+
+    // Mux TMS as either MISO (for SWD) or as a GPIO (for JTAG)
+    if (swd)
+    {
+        esp32_spi_mux_pin(CONFIG_TMS_SWDIO_GPIO,
+                          spi_periph_signal[BMP_SPI_BUS_ID].spid_out,
+                          spi_periph_signal[BMP_SPI_BUS_ID].spid_in);
+    }
+    else
+    {
+        esp32_spi_mux_pin(CONFIG_TMS_SWDIO_GPIO, SIG_GPIO_OUT_IDX | (1 << 10), 128);
+    }
 
     // The clock pin is shared among SWD and JTAG, so define it here
     ESP_LOGI(TAG, "Muxing clock pins...");
     esp32_spi_mux_pin(CONFIG_TCK_SWCLK_GPIO,
                       spi_periph_signal[BMP_SPI_BUS_ID].spiclk_out,
                       spi_periph_signal[BMP_SPI_BUS_ID].spiclk_in);
-
-    // SWD and JTAG are LSB protocols
-    spi_ll_set_rx_lsbfirst(bmp_spi_hw, 1);
-    spi_ll_set_tx_lsbfirst(bmp_spi_hw, 1);
-
-    // Use SPI mode 3
-    spi_ll_master_set_mode(bmp_spi_hw, 3);
 
     // Normal IO mode, not DIO or QIO
     spi_ll_master_set_io_mode(bmp_spi_hw, SPI_LL_IO_MODE_NORMAL);

@@ -190,7 +190,7 @@ int swdptap_init(ADIv5_DP_t *dp)
     dp->seq_out = swdptap_seq_out;
     dp->seq_out_parity = swdptap_seq_out_parity;
 
-    esp32_spi_init();
+    esp32_spi_init(1);
 
     esp32_spi_mux_pin(CONFIG_TMS_SWDIO_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spid_out, spi_periph_signal[BMP_SPI_BUS_ID].spid_in);
 
