@@ -322,9 +322,9 @@ void uart_rx_task(void *parameters)
 
             bufpos = uart_read_bytes(CONFIG_TARGET_UART_IDX, &buf[bufpos], sizeof(buf) - bufpos, 0);
 
-            // DEBUG("uart rx:%d\n", bufpos);
             if (bufpos > 0)
             {
+                ESP_LOGD(__func__, "uart has rx bytes: %d", bufpos);
                 uart_rx_count += bufpos;
                 http_term_broadcast_data(buf, bufpos);
 
@@ -724,7 +724,7 @@ void app_main(void)
     // xTaskCreatePinnedToCore(&gdb_net_task, "gdb_net", 2048, NULL, 1, NULL, portNUM_PROCESSORS - 1);
 
 #if !defined(CONFIG_TARGET_UART_NONE)
-    xTaskCreate(&uart_rx_task, "uart_rx_task", 1200, NULL, 5, NULL);
+    xTaskCreate(&uart_rx_task, "uart_rx_task", TCP_MSS + 2048, NULL, 5, NULL);
     xTaskCreate(&net_uart_task, "net_uart_task", 1200, NULL, 5, NULL);
 #endif
 
