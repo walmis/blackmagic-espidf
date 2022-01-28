@@ -16,14 +16,15 @@ spi_dev_t *bmp_spi_hw = SPI_LL_GET_HW(BMP_SPI_BUS_ID);
 
 #define TAG "esp32-spi"
 
+static bool is_swd = 0;
 static int actual_freq = INITIAL_FREQUENCY;
 int esp32_spi_set_frequency(uint32_t frequency)
 {
     esp_err_t ret;
     spi_hal_timing_conf_t temp_timing_conf;
     spi_hal_timing_param_t timing_param = {
-        // SWD reuses the same pin for both input and output
-        .half_duplex = 1,
+        // SWD reuses the same pin for both input and output, JTAG does not
+        .half_duplex = is_swd,
 
         // We need to add dummy cycles to compensate for timing
         .no_compensate = 0,
@@ -92,21 +93,22 @@ void esp32_spi_mux_pin(int pin, int out_signal, int in_signal)
 int esp32_spi_init(int swd)
 {
     static bool initialized = false;
+    is_swd = swd;
 
     esp_err_t ret;
 
-    // if (initialized)
-    // {
-    //     // spi_device_release_bus(bmp_spi_handle);
+    if (initialized)
+    {
+        // spi_device_release_bus(bmp_spi_handle);
 
-    //     ret = spi_bus_remove_device(bmp_spi_handle);
-    //     ESP_ERROR_CHECK(ret);
+        ret = spi_bus_remove_device(bmp_spi_handle);
+        ESP_ERROR_CHECK(ret);
 
-    //     ret = spi_bus_free(BMP_SPI_BUS_ID);
-    //     ESP_ERROR_CHECK(ret);
+        ret = spi_bus_free(BMP_SPI_BUS_ID);
+        ESP_ERROR_CHECK(ret);
 
-    //     initialized = false;
-    // }
+        initialized = false;
+    }
 
     // gpio_reset_pin(CONFIG_TDI_GPIO);
     // gpio_reset_pin(CONFIG_TDO_GPIO);
@@ -202,13 +204,9 @@ int esp32_spi_init(int swd)
     // // Default these to ordinary GPIOs -- they will be reinitialized by their
     // // corresponding functions.
     gpio_reset_pin(CONFIG_TDI_GPIO);
-    gpio_reset_pin(CONFIG_TDO_GPIO);
+    // gpio_reset_pin(CONFIG_TDO_GPIO);
     gpio_reset_pin(CONFIG_TMS_SWDIO_GPIO);
     gpio_reset_pin(CONFIG_TCK_SWCLK_GPIO);
-
-    // gpio_iomux_out(CONFIG_TDI_GPIO, PIN_FUNC_GPIO, false);
-    // // esp_rom_gpio_connect_out_signal(CONFIG_TDI_GPIO, SIG_GPIO_OUT_IDX, false, false);
-    // gpio_set_direction(CONFIG_TDI_GPIO, GPIO_MODE_INPUT);
 
     // Mux TDO as MISO
     if (!swd)
@@ -219,7 +217,7 @@ int esp32_spi_init(int swd)
     }
 
     // Mux TDI as a GPIO for now -- it will be remuxed as necessary
-    if (!swd)
+    if (swd)
     {
         esp32_spi_mux_pin(CONFIG_TDI_GPIO, SIG_GPIO_OUT_IDX | (1 << 10), 128);
     }
@@ -227,6 +225,12 @@ int esp32_spi_init(int swd)
     // Mux TMS as either MISO (for SWD) or as a GPIO (for JTAG)
     if (swd)
     {
+        gpio_set_direction(CONFIG_TMS_SWDIO_GPIO, GPIO_MODE_INPUT_OUTPUT);
+        // Set the OEN bit to be controlled by us, rather than by the peripheral. This bit will
+        // be altered when we do the turnaround above.
+        GPIO_HAL_GET_HW(GPIO_PORT_0)->func_out_sel_cfg[CONFIG_TMS_SWDIO_GPIO].oen_sel = 1;
+        GPIO_HAL_GET_HW(GPIO_PORT_0)->enable_w1tc = (1 << CONFIG_TMS_SWDIO_GPIO);
+
         esp32_spi_mux_pin(CONFIG_TMS_SWDIO_GPIO,
                           spi_periph_signal[BMP_SPI_BUS_ID].spid_out,
                           spi_periph_signal[BMP_SPI_BUS_ID].spid_in);

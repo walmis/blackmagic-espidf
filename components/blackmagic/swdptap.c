@@ -192,17 +192,6 @@ int swdptap_init(ADIv5_DP_t *dp)
 
     esp32_spi_init(1);
 
-    esp32_spi_mux_pin(CONFIG_TMS_SWDIO_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spid_out, spi_periph_signal[BMP_SPI_BUS_ID].spid_in);
-
-    // Set the OEN bit to be controlled by us, rather than by the peripheral. This bit will
-    // be altered when we do the turnaround above.
-    GPIO_HAL_GET_HW(GPIO_PORT_0)->func_out_sel_cfg[CONFIG_TMS_SWDIO_GPIO].oen_sel = 1;
-    GPIO_HAL_GET_HW(GPIO_PORT_0)->enable_w1tc = (1 << CONFIG_TMS_SWDIO_GPIO);
-
-    // Set half-duplex
-    spi_ll_set_half_duplex(bmp_spi_hw, 1);
-    spi_ll_set_sio_mode(bmp_spi_hw, 1);
-
     previous_swd_dir = SWDIO_STATUS_FLOAT;
 
     return 0;
