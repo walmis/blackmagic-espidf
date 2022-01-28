@@ -246,9 +246,6 @@ int esp32_spi_init(int swd)
                       spi_periph_signal[BMP_SPI_BUS_ID].spiclk_out,
                       spi_periph_signal[BMP_SPI_BUS_ID].spiclk_in);
 
-    // Normal IO mode, not DIO or QIO
-    spi_ll_master_set_io_mode(bmp_spi_hw, SPI_LL_IO_MODE_NORMAL);
-
     // We use neither the `addr` nor the `command` features
     spi_ll_set_addr_bitlen(bmp_spi_hw, 0);
     spi_ll_set_command_bitlen(bmp_spi_hw, 0);
