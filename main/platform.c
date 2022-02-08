@@ -720,12 +720,12 @@ void app_main(void)
     platform_init();
 
     xTaskCreate(&dbg_task, "dbg_main", 2048, NULL, 4, NULL);
-    xTaskCreate(&gdb_net_task, "gdb_net", 2048, NULL, 1, NULL);
+    xTaskCreate(&gdb_net_task, "gdb_net", 8192, NULL, 1, NULL);
     // xTaskCreatePinnedToCore(&gdb_net_task, "gdb_net", 2048, NULL, 1, NULL, portNUM_PROCESSORS - 1);
 
 #if !defined(CONFIG_TARGET_UART_NONE)
     xTaskCreate(&uart_rx_task, "uart_rx_task", TCP_MSS + 2048, NULL, 5, NULL);
-    xTaskCreate(&net_uart_task, "net_uart_task", 1200, NULL, 5, NULL);
+    xTaskCreate(&net_uart_task, "net_uart_task", 1200 + 4096, NULL, 5, NULL);
 #endif
 
     ota_tftp_init_server(69, 4);
