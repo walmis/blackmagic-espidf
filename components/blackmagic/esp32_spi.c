@@ -208,14 +208,6 @@ int esp32_spi_init(int swd)
     gpio_reset_pin(CONFIG_TMS_SWDIO_GPIO);
     gpio_reset_pin(CONFIG_TCK_SWCLK_GPIO);
 
-    // Mux TDO as MISO
-    if (!swd)
-    {
-        esp32_spi_mux_pin(CONFIG_TDO_GPIO,
-                          spi_periph_signal[BMP_SPI_BUS_ID].spiq_out,
-                          spi_periph_signal[BMP_SPI_BUS_ID].spiq_in);
-    }
-
     // Mux TDI as a GPIO for now -- it will be remuxed as necessary
     if (swd)
     {
