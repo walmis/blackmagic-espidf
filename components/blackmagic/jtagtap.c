@@ -44,7 +44,7 @@ enum jtag_drive_mode
 {
 	JTAG_DRIVE_TDI = 0,
 	JTAG_DRIVE_TMS = 1,
-	JTAG_DRIVE_GPIO = 2,
+	JTAG_DRIVE_UNINIT = 2,
 };
 enum jtag_drive_mode jtag_drive_mode = JTAG_DRIVE_TDI;
 
@@ -87,11 +87,6 @@ static void jtag_drive(enum jtag_drive_mode new_mode)
 		// TMS = MOSI
 		esp32_spi_mux_pin(CONFIG_TMS_SWDIO_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spid_out, spi_periph_signal[BMP_SPI_BUS_ID].spid_in);
 	}
-	if (new_mode == JTAG_DRIVE_GPIO)
-	{
-		esp32_spi_mux_pin(CONFIG_TMS_SWDIO_GPIO, SIG_GPIO_OUT_IDX | (1 << 10), 128);
-		esp32_spi_mux_pin(CONFIG_TDI_GPIO, SIG_GPIO_OUT_IDX | (1 << 10), 128);
-	}
 
 	jtag_drive_mode = new_mode;
 }
@@ -124,7 +119,7 @@ int jtagtap_init()
 	// // TCK = CLK
 	// esp32_spi_mux_pin(CONFIG_TCK_SWCLK_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spiclk_out, spi_periph_signal[BMP_SPI_BUS_ID].spiclk_in);
 
-	jtag_drive_mode = JTAG_DRIVE_GPIO;
+	jtag_drive_mode = JTAG_DRIVE_UNINIT;
 
 	// // Set full-duplex SPI operation
 	// spi_ll_set_half_duplex(bmp_spi_hw, 0);
@@ -159,12 +154,11 @@ static uint8_t jtagtap_next(uint8_t dTMS, uint8_t dTDI)
 {
 	uint16_t ret;
 
-	jtag_drive(JTAG_DRIVE_GPIO);
+	jtag_drive(JTAG_DRIVE_TMS);
 
-	gpio_set_level(CONFIG_TMS_SWDIO_GPIO, dTMS);
 	gpio_set_level(CONFIG_TDI_GPIO, dTDI);
 
-	bmp_spi_hw->data_buf[0] = 0;
+	bmp_spi_hw->data_buf[0] = !!dTMS;
 
 	spi_ll_set_miso_bitlen(bmp_spi_hw, 1);
 	spi_ll_set_mosi_bitlen(bmp_spi_hw, 1);
