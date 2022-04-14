@@ -5,8 +5,8 @@ cmake_minimum_required(VERSION 3.5)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(blackmagic)
 
-include(components/espfs/cmake/include.cmake)
-target_add_espfs(blackmagic.elf espfs ${PROJECT_SOURCE_DIR}/html)
+include(components/frogfs/cmake/functions.cmake)
+target_add_frogfs(blackmagic.elf html NAME frogfs)
 
 # Fill in variables inside `version.h.in` and generate `version.h`
 cmake_minimum_required(VERSION 3.0.0)

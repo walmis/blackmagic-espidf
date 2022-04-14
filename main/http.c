@@ -9,10 +9,10 @@
 #include <libesphttpd/auth.h>
 #include <libesphttpd/captdns.h>
 #include <libesphttpd/cgiwebsocket.h>
-#include <libesphttpd/httpd-espfs.h>
+#include <libesphttpd/httpd-frogfs.h>
 #include <libesphttpd/httpd-freertos.h>
 #include <libesphttpd/cgiredirect.h>
-#include "libespfs/espfs.h"
+#include "frogfs/frogfs.h"
 #include "driver/uart.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -21,8 +21,8 @@
 #include "platform.h"
 #include "hashmap.h"
 
-extern const uint8_t espfs_bin[];
-extern const size_t espfs_bin_len;
+extern const uint8_t frogfs_bin[];
+extern const size_t frogfs_bin_len;
 extern void platform_set_baud(uint32_t);
 
 static HttpdFreertosInstance instance;
@@ -238,8 +238,8 @@ CgiUploadFlashDef uploadParams = {
 HttpdBuiltInUrl builtInUrls[] = {
     //  {"*", cgiRedirectApClientToHostname, "esp8266.nonet"},
     {"/", cgiRedirect, (const void *)"/index.html", 0},
-    //  {"/led.tpl", cgiEspFsTemplate, tplLed},
-    //  {"/index.tpl", cgiEspFsTemplate, tplCounter},
+    //  {"/led.tpl", cgifrogfsTemplate, tplLed},
+    //  {"/index.tpl", cgifrogfsTemplate, tplCounter},
     //  {"/led.cgi", cgiLed, NULL},
     //#ifndef ESP32
     {"/flash/", cgiRedirect, (const void *)"/flash/index.html", 0},
@@ -255,7 +255,7 @@ HttpdBuiltInUrl builtInUrls[] = {
     //  {"/wifi", cgiRedirect, "/wifi/wifi.tpl"},
     //  {"/wifi/", cgiRedirect, "/wifi/wifi.tpl"},
     //  {"/wifi/wifiscan.cgi", cgiWiFiScan, NULL},
-    //  {"/wifi/wifi.tpl", cgiEspFsTemplate, tplWlan},
+    //  {"/wifi/wifi.tpl", cgifrogfsTemplate, tplWlan},
     //  {"/wifi/connect.cgi", cgiWiFiConnect, NULL},
     //  {"/wifi/connstatus.cgi", cgiWiFiConnStatus, NULL},
     {"/uart/baud", cgi_baud, NULL, 0},
@@ -270,7 +270,7 @@ HttpdBuiltInUrl builtInUrls[] = {
     //  {"/test/", cgiRedirect, "/test/index.html"},
     //  {"/test/test.cgi", cgiTestbed, NULL},
 
-    {"*", cgiEspFsHook, NULL, 0}, // Catch-all cgi function for the filesystem
+    {"*", cgiFrogFsHook, NULL, 0}, // Catch-all cgi function for the filesystem
     {NULL, NULL, NULL, 0}};
 
 void http_term_broadcast_data(uint8_t *data, size_t len)
@@ -296,12 +296,12 @@ void http_debug_putc(char c, int flush)
 
 void httpd_start()
 {
-    static espfs_config_t espfs_config = {
-        .addr = espfs_bin,
+    static frogfs_config_t frogfs_config = {
+        .addr = frogfs_bin,
     };
-    espfs_fs_t *fs = espfs_init(&espfs_config);
+    frogfs_fs_t *fs = frogfs_init(&frogfs_config);
     assert(fs != NULL);
-    httpdRegisterEspfs(fs);
+    httpdRegisterFrogFs(fs);
 
     static char connectionMemory[sizeof(RtosConnType) * maxConnections];
     httpdFreertosInit(&instance,
