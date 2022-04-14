@@ -52,18 +52,22 @@
 #include "lwip/tcp.h"
 
 #include "esp32/rom/ets_sys.h"
+#include "esp_adc_cal.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "driver/uart.h"
 #include "soc/uart_reg.h"
+#include "driver/adc.h"
 #include "driver/gpio.h"
 // #include "esp8266/uart_register.h"
 
 #include <lwip/sockets.h>
 
 #include "ota-tftp.h"
+
+#define TAG "bmp-esp32"
 
 void platform_max_frequency_set(uint32_t freq)
 {
@@ -160,7 +164,7 @@ void platform_srst_set_val(bool assert)
     else
     {
         gpio_set_level(CONFIG_SRST_GPIO, 1);
-        gpio_set_direction(CONFIG_SRST_GPIO, GPIO_INPUT);
+        gpio_set_direction(CONFIG_SRST_GPIO, GPIO_OUTPUT);
     }
 }
 
@@ -169,13 +173,82 @@ bool platform_srst_get_val(void)
     return !gpio_get_level(CONFIG_SRST_GPIO);
 }
 
+// ADC Calibration
+#if CONFIG_IDF_TARGET_ESP32
+#define ADC_EXAMPLE_CALI_SCHEME ESP_ADC_CAL_VAL_EFUSE_VREF
+#elif CONFIG_IDF_TARGET_ESP32S2
+#define ADC_EXAMPLE_CALI_SCHEME ESP_ADC_CAL_VAL_EFUSE_TP
+#elif CONFIG_IDF_TARGET_ESP32C3
+#define ADC_EXAMPLE_CALI_SCHEME ESP_ADC_CAL_VAL_EFUSE_TP
+#elif CONFIG_IDF_TARGET_ESP32S3
+#define ADC_EXAMPLE_CALI_SCHEME ESP_ADC_CAL_VAL_EFUSE_TP_FIT
+#endif
+
+#define ADC_CHANNEL ADC1_CHANNEL_7
+
+static bool adc_calibration_init(esp_adc_cal_characteristics_t *adc_characteristics)
+{
+    esp_err_t ret;
+    bool cali_enable = false;
+
+    ret = esp_adc_cal_check_efuse(ADC_EXAMPLE_CALI_SCHEME);
+    if (ret == ESP_ERR_NOT_SUPPORTED)
+    {
+        ESP_LOGW(TAG, "Calibration scheme not supported, skip software calibration");
+    }
+    else if (ret == ESP_ERR_INVALID_VERSION)
+    {
+        ESP_LOGW(TAG, "eFuse not burnt, skip software calibration");
+    }
+    else if (ret == ESP_OK)
+    {
+        cali_enable = true;
+        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_2_5, ADC_WIDTH_BIT_DEFAULT, 0, adc_characteristics);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Invalid arg");
+    }
+
+    return cali_enable;
+}
+
+static bool adc_init(esp_adc_cal_characteristics_t *adc_characteristics)
+{
+    bool ret = adc_calibration_init(adc_characteristics);
+    ESP_ERROR_CHECK(adc1_config_width(ADC_WIDTH_BIT_DEFAULT));
+    ESP_ERROR_CHECK(adc1_config_channel_atten(ADC_CHANNEL, ADC_ATTEN_DB_2_5));
+    return ret;
+}
+
 const char *
 platform_target_voltage(void)
 {
     static char voltage[16];
-    extern uint16_t rom_phy_get_vdd33(void);
-    int vdd = rom_phy_get_vdd33();
-    sprintf(voltage, "%dmV", vdd);
+    static bool calibrated = false;
+    static esp_adc_cal_characteristics_t adc_characteristics;
+    int adc_reading;
+
+    if (!calibrated)
+    {
+        calibrated = adc_init(&adc_characteristics);
+    }
+
+    adc_reading = adc1_get_raw(ADC_CHANNEL);
+    ESP_LOGI(TAG, "raw  data: %d", adc_reading);
+    if (calibrated)
+    {
+        uint32_t voltage_reading = esp_adc_cal_raw_to_voltage(adc_reading, &adc_characteristics);
+        ESP_LOGI(TAG, "cali data: %d mV", voltage_reading);
+
+        // Farpatch has a divider that's 82k on top and 20k on the bottom.
+        uint32_t adjusted_voltage = (voltage_reading * 51) / 10;
+         snprintf(voltage, sizeof(voltage) - 1, "%dmV", adjusted_voltage);
+    }
+    else
+    {
+        snprintf(voltage, sizeof(voltage) - 1, "unknown");
+    }
     return voltage;
 }
 
@@ -507,7 +580,11 @@ static esp_err_t wifi_fill_sta_config(wifi_config_t *wifi_config)
     ESP_LOGI(__func__, "wifi_fill_sta_config begun.");
 
     memset(wifi_config, 0, sizeof(*wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_MAX_MODEM));
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_LOGI(__func__, "wifi_fill_sta_config started wifi.");
+    // ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(4*2)); // 2 mA (in units of 0.25 mA)
+    ESP_LOGI(__func__, "wifi_fill_sta_config set max tx power.");
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_STA_START, esp_system_event_sta_start, NULL, NULL));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, esp_system_event_sta_connected, NULL, NULL));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, esp_system_event_sta_disconnected, NULL, NULL));
@@ -604,7 +681,9 @@ void wifi_init_sta()
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_MAX_MODEM));
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(4 * 2)); // 2 mA (in units of 0.25 mA)
 
     ESP_LOGI(__func__, "wifi_init_sta finished.");
 }
