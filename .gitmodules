@@ -1,5 +1,5 @@
 [submodule "espfs"]
-	path = components/espfs
+	path = components/frogfs
 	url = https://github.com/xobs/libespfs.git
 [submodule "libesphttpd"]
 	path = components/libesphttpd

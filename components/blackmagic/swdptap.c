@@ -77,6 +77,7 @@ static IRAM_ATTR void swdptap_turnaround(int dir)
         spi_ll_enable_mosi(bmp_spi_hw, 0);
         // Let the SWDIO pin float, as it will be driven by the device
         GPIO_HAL_GET_HW(GPIO_PORT_0)->enable_w1tc = (1 << CONFIG_TMS_SWDIO_GPIO);
+        gpio_set_level(CONFIG_TMS_SWDIO_DIR_GPIO, 0);
     }
 
     // Receive one dummy bit
@@ -93,6 +94,7 @@ static IRAM_ATTR void swdptap_turnaround(int dir)
         spi_ll_enable_mosi(bmp_spi_hw, 1);
         // Drive the SWDIO pin, as we're in control now
         GPIO_HAL_GET_HW(GPIO_PORT_0)->enable_w1ts = (1 << CONFIG_TMS_SWDIO_GPIO);
+        gpio_set_level(CONFIG_TMS_SWDIO_DIR_GPIO, 1);
     }
 }
 

@@ -90,6 +90,12 @@ menu "Blackmagic Configuration"
         help
         TMS/SWDIO GPIO number
         
+    config TMS_SWDIO_DIR_GPIO
+        int "SWDIO/TMS direction GPIO"
+        default 1
+        help
+        TMS/SWDIO direction GPIO number
+
     config TCK_SWCLK_GPIO
         int "SWCLK/TCK GPIO"
         default 2

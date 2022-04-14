@@ -200,29 +200,44 @@ int esp32_spi_init(int swd)
     spi_ll_master_set_cs_hold(bmp_spi_hw, 0);
     spi_ll_master_select_cs(bmp_spi_hw, -1);
 
-    // ESP_LOGI(TAG, "Unmuxing various pins...");
-    // // Default these to ordinary GPIOs -- they will be reinitialized by their
-    // // corresponding functions.
+    ESP_LOGI(TAG, "Unmuxing various pins...");
+    // Default these to ordinary GPIOs -- they will be reinitialized by their
+    // corresponding functions.
+    ESP_LOGI(TAG, "Unmuxing TDI...");
     gpio_reset_pin(CONFIG_TDI_GPIO);
     // gpio_reset_pin(CONFIG_TDO_GPIO);
+    ESP_LOGI(TAG, "Unmuxing TMS/SWDIO...");
     gpio_reset_pin(CONFIG_TMS_SWDIO_GPIO);
+    ESP_LOGI(TAG, "Unmuxing TCK/SWCLK...");
     gpio_reset_pin(CONFIG_TCK_SWCLK_GPIO);
+    ESP_LOGI(TAG, "Unmuxing SWDIO_DIR...");
+    gpio_reset_pin(CONFIG_TMS_SWDIO_DIR_GPIO);
+
+    ESP_LOGI(TAG, "Setting SWDIO_DIR value...");
+    gpio_set_direction(CONFIG_TMS_SWDIO_DIR_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_level(CONFIG_TMS_SWDIO_DIR_GPIO, 0);
+    esp32_spi_mux_pin(CONFIG_TMS_SWDIO_DIR_GPIO, SIG_GPIO_OUT_IDX | (1 << 10), 128);
 
     // Mux TDI as a GPIO for now -- it will be remuxed as necessary
     if (swd)
     {
-        esp32_spi_mux_pin(CONFIG_TDI_GPIO, SIG_GPIO_OUT_IDX | (1 << 10), 128);
+        ESP_LOGI(TAG, "Muxing TDI...");
+        // esp32_spi_mux_pin(CONFIG_TDI_GPIO, SIG_GPIO_OUT_IDX | (1 << 10), 128);
+        gpio_set_direction(CONFIG_TDI_GPIO, GPIO_MODE_OUTPUT);
+        gpio_set_level(CONFIG_TDI_GPIO, 0);
     }
 
     // Mux TMS as either MISO (for SWD) or as a GPIO (for JTAG)
     if (swd)
     {
+        ESP_LOGI(TAG, "Muxing TMS_SWDIO_GPIO...");
         gpio_set_direction(CONFIG_TMS_SWDIO_GPIO, GPIO_MODE_INPUT_OUTPUT);
         // Set the OEN bit to be controlled by us, rather than by the peripheral. This bit will
         // be altered when we do the turnaround above.
         GPIO_HAL_GET_HW(GPIO_PORT_0)->func_out_sel_cfg[CONFIG_TMS_SWDIO_GPIO].oen_sel = 1;
         GPIO_HAL_GET_HW(GPIO_PORT_0)->enable_w1tc = (1 << CONFIG_TMS_SWDIO_GPIO);
 
+        ESP_LOGI(TAG, "Muxing SPI for TMS_SWDIO_GPIO...");
         esp32_spi_mux_pin(CONFIG_TMS_SWDIO_GPIO,
                           spi_periph_signal[BMP_SPI_BUS_ID].spid_out,
                           spi_periph_signal[BMP_SPI_BUS_ID].spid_in);
