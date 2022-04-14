@@ -244,6 +244,7 @@ int esp32_spi_init(int swd)
     }
     else
     {
+        gpio_set_level(CONFIG_TMS_SWDIO_DIR_GPIO, 1);
         esp32_spi_mux_pin(CONFIG_TMS_SWDIO_GPIO, SIG_GPIO_OUT_IDX | (1 << 10), 128);
     }
 
