@@ -69,23 +69,19 @@ static void jtag_drive(enum jtag_drive_mode new_mode)
 
 	if (new_mode == JTAG_DRIVE_TDI)
 	{
-		// Wire up the TMS pin, which is GPIO controlled (mostly)
-		// gpio_set_direction(CONFIG_TMS_SWDIO_GPIO, GPIO_MODE_INPUT_OUTPUT);
-		// gpio_iomux_out(CONFIG_TMS_SWDIO_GPIO, PIN_FUNC_GPIO, false);
-		esp32_spi_mux_pin(CONFIG_TMS_SWDIO_GPIO, SIG_GPIO_OUT_IDX | (1 << 10), 128);
-
 		// TDI = MOSI
-		esp32_spi_mux_pin(CONFIG_TDI_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spid_out, spi_periph_signal[BMP_SPI_BUS_ID].spid_in);
+		esp32_spi_mux_out(CONFIG_TDI_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spid_out);
+
+		// Wire up the TMS pin, which is GPIO controlled (mostly)
+		esp32_spi_mux_out(CONFIG_TMS_SWDIO_GPIO, SIG_GPIO_OUT_IDX | (1 << 10));
 	}
 	if (new_mode == JTAG_DRIVE_TMS)
 	{
-		// Wire up the TMS pin, which is GPIO controlled (mostly)
-		// gpio_set_direction(CONFIG_TDI_GPIO, GPIO_MODE_INPUT_OUTPUT);
-		// gpio_iomux_out(CONFIG_TDI_GPIO, PIN_FUNC_GPIO, false);
-		esp32_spi_mux_pin(CONFIG_TDI_GPIO, SIG_GPIO_OUT_IDX | (1 << 10), 128);
-
 		// TMS = MOSI
-		esp32_spi_mux_pin(CONFIG_TMS_SWDIO_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spid_out, spi_periph_signal[BMP_SPI_BUS_ID].spid_in);
+		esp32_spi_mux_out(CONFIG_TMS_SWDIO_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spid_out);
+
+		// Wire up the TMS pin, which is GPIO controlled (mostly)
+		esp32_spi_mux_out(CONFIG_TDI_GPIO, SIG_GPIO_OUT_IDX);
 	}
 
 	jtag_drive_mode = new_mode;
@@ -100,33 +96,11 @@ int jtagtap_init()
 	jtag_proc.jtagtap_tdi_seq = jtagtap_tdi_seq;
 
 	esp32_spi_init(0);
+
 	gpio_ll_output_enable(GPIO_HAL_GET_HW(GPIO_PORT_0), CONFIG_TMS_SWDIO_GPIO);
 	gpio_ll_output_enable(GPIO_HAL_GET_HW(GPIO_PORT_0), CONFIG_TDI_GPIO);
 
-	// // Wire up the TMS pin, which is GPIO controlled (mostly)
-	// gpio_iomux_out(CONFIG_TMS_SWDIO_GPIO, PIN_FUNC_GPIO, false);
-	// esp_rom_gpio_connect_out_signal(CONFIG_TMS_SWDIO_GPIO, SIG_GPIO_OUT_IDX, false, false);
-	// gpio_set_direction(CONFIG_TMS_SWDIO_GPIO, GPIO_MODE_OUTPUT);
-
-	// // TDI = MOSI
-	// gpio_iomux_out(CONFIG_TDI_GPIO, PIN_FUNC_GPIO, false);
-	// esp_rom_gpio_connect_out_signal(CONFIG_TDI_GPIO, SIG_GPIO_OUT_IDX, false, false);
-	// gpio_set_direction(CONFIG_TDI_GPIO, GPIO_MODE_OUTPUT);
-
-	// // TDO = MISO
-	// esp32_spi_mux_pin(CONFIG_TDO_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spiq_out, spi_periph_signal[BMP_SPI_BUS_ID].spiq_in);
-
-	// // TCK = CLK
-	// esp32_spi_mux_pin(CONFIG_TCK_SWCLK_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spiclk_out, spi_periph_signal[BMP_SPI_BUS_ID].spiclk_in);
-
 	jtag_drive_mode = JTAG_DRIVE_UNINIT;
-
-	// // Set full-duplex SPI operation
-	// spi_ll_set_half_duplex(bmp_spi_hw, 0);
-	// spi_ll_set_sio_mode(bmp_spi_hw, 0);
-
-	// Go to JTAG mode for SWJ-DP. It starts with 50 clocks of TMS:1 TDI:0,
-	// then sends the sequence 0xE73C.
 
 	// Reset SW-DP
 	jtagtap_tms_seq_tdi(0xffffffff, 0, 32);

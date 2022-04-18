@@ -71,6 +71,12 @@ int esp32_spi_get_frequency(void)
     return actual_freq;
 }
 
+void esp32_spi_mux_out(int pin, int out_signal)
+{
+    gpio_dev_t *hw = GPIO_HAL_GET_HW(GPIO_PORT_0);
+    hw->func_out_sel_cfg[pin].val = out_signal;
+}
+
 void esp32_spi_mux_pin(int pin, int out_signal, int in_signal)
 {
     if (pin < 0)
@@ -79,15 +85,11 @@ void esp32_spi_mux_pin(int pin, int out_signal, int in_signal)
     }
 
     gpio_dev_t *hw = GPIO_HAL_GET_HW(GPIO_PORT_0);
-    // gpio_set_direction(pin, GPIO_MODE_INPUT_OUTPUT);
     hw->func_in_sel_cfg[pin].val = in_signal;
     hw->func_out_sel_cfg[pin].val = out_signal;
-    // esp_rom_gpio_connect_out_signal(pin, out_signal, false, false);
-    // esp_rom_gpio_connect_in_signal(pin, in_signal, false);
 #if CONFIG_IDF_TARGET_ESP32S2
     PIN_INPUT_ENABLE(GPIO_PIN_MUX_REG[pin]);
 #endif
-    // gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[pin], PIN_FUNC_GPIO);
 }
 
 int esp32_spi_init(int swd)
