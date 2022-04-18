@@ -61,7 +61,9 @@
 #include "soc/uart_reg.h"
 #include "driver/adc.h"
 #include "driver/gpio.h"
-// #include "esp8266/uart_register.h"
+
+#include "wifi_manager.h"
+#include "wifi.h"
 
 #include <lwip/sockets.h>
 
@@ -243,7 +245,7 @@ platform_target_voltage(void)
 
         // Farpatch has a divider that's 82k on top and 20k on the bottom.
         uint32_t adjusted_voltage = (voltage_reading * 51) / 10;
-         snprintf(voltage, sizeof(voltage) - 1, "%dmV", adjusted_voltage);
+        snprintf(voltage, sizeof(voltage) - 1, "%dmV", adjusted_voltage);
     }
     else
     {
@@ -430,10 +432,6 @@ void uart_rx_task(void *parameters)
 
 void dbg_task(void *parameters)
 {
-    // struct netconn* nc = netconn_new(NETCONN_UDP);
-    // ip_addr_t ip;
-    // IP_ADDR4(&ip, 192, 168, 4, 255);
-
     while (1)
     {
         xSemaphoreTake(dbg_msg_queue.sem, -1);
@@ -480,216 +478,6 @@ bool cmd_setbaud(target *t, int argc, const char **argv)
     return 1;
 }
 
-// case SYSTEM_EVENT_STA_START:
-static void esp_system_event_sta_start(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
-    esp_wifi_connect();
-}
-// case SYSTEM_EVENT_STA_CONNECTED:
-static void esp_system_event_sta_connected(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
-    wifi_event_sta_connected_t *event = event_data;
-    ESP_LOGI("WIFI", "connected:%s", event->ssid);
-#ifdef CONFIG_BLACKMAGIC_HOSTNAME
-    tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, CONFIG_BLACKMAGIC_HOSTNAME);
-    ESP_LOGI("WIFI", "setting hostname:%s", CONFIG_BLACKMAGIC_HOSTNAME);
-#endif
-}
-// case SYSTEM_EVENT_STA_GOT_IP:
-static void esp_system_event_sta_got_ip(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
-    ip_event_got_ip_t *ip = event_data;
-    ESP_LOGI("WIFI", "Associated IP address: " IPSTR, IP2STR(&ip->ip_info.ip));
-    // xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
-}
-
-// case SYSTEM_EVENT_STA_DISCONNECTED:
-static void esp_system_event_sta_disconnected(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
-    wifi_event_sta_disconnected_t *info = event_data;
-    ESP_LOGE("WIFI", "Disconnect reason : %d", info->reason);
-    // if (info->disconnected.reason == WIFI_REASON_BASIC_RATE_NOT_SUPPORT) {
-    //     /*Switch to 802.11 bgn mode */
-    //     //esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCAL_11B | WIFI_PROTOCAL_11G | WIFI_PROTOCAL_11N);
-    // }
-    esp_wifi_connect();
-    // xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
-}
-
-// case SYSTEM_EVENT_AP_STACONNECTED:
-static void esp_system_event_ap_staconnected(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
-    wifi_event_ap_staconnected_t *event = event_data;
-    ESP_LOGI("WIFI", "station:" MACSTR " join, AID=%d",
-             MAC2STR(event->mac),
-             event->aid);
-}
-// case SYSTEM_EVENT_AP_STADISCONNECTED:
-static void esp_system_event_ap_stadisconnected(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
-    wifi_event_ap_stadisconnected_t *event = event_data;
-    ESP_LOGI("WIFI", "station:" MACSTR " leave, AID=%d",
-             MAC2STR(event->mac),
-             event->aid);
-}
-
-#if CONFIG_ESP_WIFI_MODE_AP
-
-void wifi_init_softap()
-{
-    // wifi_event_group = xEventGroupCreate();
-
-    esp_netif_init();
-    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
-
-    uint8_t val = 0;
-    tcpip_adapter_dhcps_option(TCPIP_ADAPTER_OP_SET, TCPIP_ADAPTER_ROUTER_SOLICITATION_ADDRESS, &val, sizeof(dhcps_offer_t));
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    wifi_config_t wifi_config = {
-        .ap = {
-            .password = CONFIG_ESP_WIFI_PASSWORD,
-            .max_connection = CONFIG_MAX_STA_CONN,
-            .authmode = WIFI_AUTH_WPA2_PSK,
-            .channel = 11
-
-        },
-    };
-
-    uint64_t chipid;
-    esp_read_mac((uint8_t *)&chipid, ESP_MAC_WIFI_SOFTAP);
-
-    if (strcmp(CONFIG_ESP_WIFI_SSID, "auto") == 0)
-    {
-        wifi_config.ap.ssid_len = sprintf((char *)wifi_config.ap.ssid, "blackmagic_%X", (uint32_t)chipid);
-    }
-    else
-    {
-        wifi_config.ap.ssid_len = sprintf((char *)wifi_config.ap.ssid, CONFIG_ESP_WIFI_SSID);
-    }
-
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
-}
-#endif
-#if CONFIG_ESP_WIFI_IS_STATION
-static esp_err_t wifi_fill_sta_config(wifi_config_t *wifi_config)
-{
-    ESP_LOGI(__func__, "wifi_fill_sta_config begun.");
-
-    memset(wifi_config, 0, sizeof(*wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_MAX_MODEM));
-    ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_LOGI(__func__, "wifi_fill_sta_config started wifi.");
-    // ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(4*2)); // 2 mA (in units of 0.25 mA)
-    ESP_LOGI(__func__, "wifi_fill_sta_config set max tx power.");
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_STA_START, esp_system_event_sta_start, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, esp_system_event_sta_connected, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, esp_system_event_sta_disconnected, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, esp_system_event_sta_got_ip, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_AP_STACONNECTED, esp_system_event_ap_staconnected, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_AP_STADISCONNECTED, esp_system_event_ap_stadisconnected, NULL, NULL));
-    while (1)
-    {
-        uint16_t i;
-        wifi_scan_config_t scan_config = {0};
-        ESP_ERROR_CHECK(esp_wifi_scan_start(&scan_config, true));
-        uint16_t num_aps = 0;
-        ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&num_aps));
-        wifi_ap_record_t scan_results[num_aps];
-        ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&num_aps, scan_results));
-
-        for (i = 0; i < num_aps; i++)
-        {
-            if ((strlen(CONFIG_ESP_WIFI_SSID) > 0) && !strcmp((char *)scan_results[i].ssid, CONFIG_ESP_WIFI_SSID))
-            {
-                // DEBUG_WARN("Connecting to %s\n", CONFIG_ESP_WIFI_SSID);
-                strncpy((char *)wifi_config->sta.ssid, CONFIG_ESP_WIFI_SSID, sizeof(wifi_config->sta.ssid));
-                strncpy((char *)wifi_config->sta.password, CONFIG_ESP_WIFI_PASSWORD, sizeof(wifi_config->sta.password));
-                ESP_ERROR_CHECK(esp_wifi_stop());
-                return ESP_OK;
-            }
-            if ((strlen(CONFIG_ESP_WIFI_SSID2) > 0) && !strcmp((char *)scan_results[i].ssid, CONFIG_ESP_WIFI_SSID2))
-            {
-                strncpy((char *)wifi_config->sta.ssid, CONFIG_ESP_WIFI_SSID2, sizeof(wifi_config->sta.ssid));
-                strncpy((char *)wifi_config->sta.password, CONFIG_ESP_WIFI_PASSWORD2, sizeof(wifi_config->sta.password));
-                // DEBUG_WARN("Connecting to %s (password: %s)\n", wifi_config->sta.ssid, wifi_config->sta.password);
-                ESP_ERROR_CHECK(esp_wifi_stop());
-                return ESP_OK;
-            }
-            if ((strlen(CONFIG_ESP_WIFI_SSID3) > 0) && !strcmp((char *)scan_results[i].ssid, CONFIG_ESP_WIFI_SSID3))
-            {
-                // DEBUG_WARN("Connecting to %s\n", CONFIG_ESP_WIFI_SSID3);
-                strncpy((char *)wifi_config->sta.ssid, CONFIG_ESP_WIFI_SSID3, sizeof(wifi_config->sta.ssid));
-                strncpy((char *)wifi_config->sta.password, CONFIG_ESP_WIFI_PASSWORD3, sizeof(wifi_config->sta.password));
-                ESP_ERROR_CHECK(esp_wifi_stop());
-                return ESP_OK;
-            }
-            if ((strlen(CONFIG_ESP_WIFI_SSID4) > 0) && !strcmp((char *)scan_results[i].ssid, CONFIG_ESP_WIFI_SSID4))
-            {
-                // DEBUG_WARN("Connecting to %s\n", CONFIG_ESP_WIFI_SSID4);
-                strncpy((char *)wifi_config->sta.ssid, CONFIG_ESP_WIFI_SSID4, sizeof(wifi_config->sta.ssid));
-                strncpy((char *)wifi_config->sta.password, CONFIG_ESP_WIFI_PASSWORD4, sizeof(wifi_config->sta.password));
-                ESP_ERROR_CHECK(esp_wifi_stop());
-                return ESP_OK;
-            }
-        }
-    }
-}
-
-void wifi_init_sta()
-{
-    uint8_t mac_address[8];
-    esp_err_t result;
-
-    ESP_LOGI(__func__, "wifi_init_sta begun");
-
-    esp_netif_init();
-
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    wifi_config_t wifi_config;
-
-    result = esp_base_mac_addr_get(mac_address);
-
-    if (result == ESP_ERR_INVALID_MAC)
-    {
-        ESP_LOGE(__func__, "base mac address invalid.  reading from fuse.");
-        ESP_ERROR_CHECK(esp_efuse_mac_get_default(mac_address));
-        ESP_ERROR_CHECK(esp_base_mac_addr_set(mac_address));
-        ESP_LOGE(__func__, "base mac address configured.");
-    }
-
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    wifi_fill_sta_config(&wifi_config);
-
-    // ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    // result = esp_base_mac_addr_get(mac_address);
-    // if (result == ESP_ERR_INVALID_MAC)
-    // {
-    //     ESP_LOGE(__func__, "base mac address invalid.  reading from fuse.");
-    //     ESP_ERROR_CHECK(esp_efuse_mac_get_default(mac_address));
-    //     ESP_ERROR_CHECK(esp_base_mac_addr_set(mac_address));
-    //     ESP_LOGE(__func__, "base mac address configured.");
-    // }
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_MAX_MODEM));
-    ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(4 * 2)); // 2 mA (in units of 0.25 mA)
-
-    ESP_LOGI(__func__, "wifi_init_sta finished.");
-}
-#endif
-
-// wifi_softap_set_dhcps_offer_option(OFFER_ROUTER, 0)
 void uart_send_break()
 {
     uart_wait_tx_done(CONFIG_TARGET_UART_IDX, 10);
@@ -746,6 +534,7 @@ void app_main(void)
     ESP_LOGI(__func__, "deactivating debug uart");
     esp_log_set_vprintf(vprintf_noop);
 #endif
+    xTaskCreate(&dbg_task, "dbg_main", 2048, NULL, 4, NULL);
 
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES)
@@ -757,21 +546,16 @@ void app_main(void)
 
     ESP_ERROR_CHECK(nvs_open("config", NVS_READWRITE, &h_nvs_conf));
 
-#if CONFIG_ESP_WIFI_IS_STATION
-    wifi_init_sta();
-#else
-    wifi_init_softap();
-    esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11N);
-#endif
+    bm_update_wifi_ssid();
+    bm_update_wifi_ps();
 
+    wifi_manager_start();
     httpd_start();
-
-    esp_wifi_set_ps(WIFI_PS_NONE);
 
 #if !defined(CONFIG_TARGET_UART_NONE)
     ESP_LOGI(__func__, "configuring UART%d for target", CONFIG_TARGET_UART_IDX);
 
-    uint32_t baud = 230400;
+    uint32_t baud = 115200;
     nvs_get_u32(h_nvs_conf, "uartbaud", &baud);
 
     uart_config_t uart_config = {
@@ -794,11 +578,11 @@ void app_main(void)
     };
 
     ESP_ERROR_CHECK(uart_intr_config(CONFIG_TARGET_UART_IDX, &uart_intr));
+    uart_set_baudrate(CONFIG_TARGET_UART_IDX, baud);
 #endif
 
     platform_init();
 
-    xTaskCreate(&dbg_task, "dbg_main", 2048, NULL, 4, NULL);
     xTaskCreate(&gdb_net_task, "gdb_net", 8192, NULL, 1, NULL);
     // xTaskCreatePinnedToCore(&gdb_net_task, "gdb_net", 2048, NULL, 1, NULL, portNUM_PROCESSORS - 1);
 
@@ -811,12 +595,3 @@ void app_main(void)
 
     ESP_LOGI(__func__, "Free heap %d", esp_get_free_heap_size());
 }
-
-// #ifndef ENABLE_DEBUG
-// __attribute((used)) int ets_printf(const char *__restrict c, ...)
-// {
-//     return 0;
-// }
-
-// __attribute((used)) int printf(const char *__restrict c, ...) { return 0; }
-// #endif

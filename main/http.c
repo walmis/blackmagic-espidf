@@ -20,6 +20,7 @@
 #include <freertos/queue.h>
 #include "platform.h"
 #include "hashmap.h"
+#include "wifi.h"
 
 extern const uint8_t frogfs_bin[];
 extern const size_t frogfs_bin_len;
@@ -264,6 +265,12 @@ HttpdBuiltInUrl builtInUrls[] = {
     //
     {"/terminal", cgiWebsocket, (const void *)on_term_connect, 0},
     {"/debugws", cgiWebsocket, (const void *)on_debug_connect, 0},
+
+    // Wifi Manager
+    {"/ap.json", cgiApJson, 0, 0},
+    {"/connect.json", cgiConnectJson, 0, 0},
+    {"/status.json", cgiStatusJson, 0, 0},
+
     //  {"/websocket/echo.cgi", cgiWebsocket, myEchoWebsocketConnect},
     //
     //  {"/test", cgiRedirect, "/test/index.html"},
@@ -292,7 +299,7 @@ void http_debug_putc(char c, int flush)
     }
 }
 
-#define maxConnections 4
+#define maxConnections 8
 
 void httpd_start()
 {

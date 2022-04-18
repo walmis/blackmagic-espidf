@@ -7,3 +7,6 @@
 [submodule "components/blackmagic/blackmagic"]
 	path = components/blackmagic/blackmagic
 	url = https://github.com/blacksphere/blackmagic.git
+[submodule "components/esp32-wifi-manager"]
+	path = components/esp32-wifi-manager
+	url = https://github.com/xobs/esp32-wifi-manager.git
