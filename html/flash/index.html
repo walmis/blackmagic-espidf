@@ -1,76 +1,81 @@
+<!DOCTYPE html>
 <html>
-<head><title>Upgrade firmware</title>
-<link rel="stylesheet" type="text/css" href="style.css">
-<script type="text/javascript" src="140medley.min.js"></script>
-<script type="text/javascript">
 
-var xhr=j();
+<head>
+	<title>Update firmware</title>
+	<link rel="stylesheet" type="text/css" href="style.css">
+	<script type="text/javascript" src="../jquery.js"></script>
+	<script type="text/javascript">
 
-function doReboot() {
-	xhr.open("GET", "reboot");
-	xhr.onreadystatechange=function() {
-		if (xhr.readyState==4 && xhr.status>=200 && xhr.status<300) {
-			window.setTimeout(function() {
-				location.reload(true);
-			}, 3000);
-		}
-	}
-	//ToDo: set timer to 
-	xhr.send();
-}
+		var xhr = new XMLHttpRequest();
 
-function setProgress(amt) {
-	$("#progressbarinner").style.width=String(amt*200)+"px";
-}
-
-function doUpgrade() {
-	var f=$("#file").files[0];
-	if (typeof f=='undefined') {
-		$("#remark").innerHTML="Can't read file!";
-		return
-	}
-	xhr.open("POST", "upload");
-	xhr.onreadystatechange=function() {
-		if (xhr.readyState==4 && xhr.status>=200 && xhr.status<300) {
-			setProgress(1);
-			let response = JSON.parse(xhr.responseText);
-			if (!response["success"]) {
-				$("#remark").innerHTML="Error: "+xhr.responseText;
-			} else {
-				$("#remark").innerHTML="Uploading done. Rebooting.";
-				doReboot();
+		function doReboot() {
+			xhr.open("GET", "reboot");
+			xhr.onreadystatechange = function () {
+				if (xhr.readyState == 4 && xhr.status >= 200 && xhr.status < 300) {
+					window.setTimeout(function () {
+						location.reload(true);
+					}, 3000);
+				}
 			}
+			xhr.send();
 		}
-	}
-	if (typeof xhr.upload.onprogress != 'undefined') {
-		xhr.upload.onprogress=function(e) {
-			setProgress(e.loaded / e.total);
+
+		function setProgress(amt) {
+			$("#progressbarinner")[0].style.width = String(amt * 200) + "px";
 		}
-	}
-	xhr.send(f);
-	return false;
-}
+
+		function doUpgrade() {
+			var f = $("#file")[0].files[0];
+			if (typeof f == 'undefined') {
+				$("#remark")[0].innerHTML = "Can't read file!";
+				return
+			}
+			xhr.open("POST", "upload");
+			xhr.onreadystatechange = function () {
+				if (xhr.readyState == 4 && xhr.status >= 200 && xhr.status < 300) {
+					setProgress(1);
+					let response = JSON.parse(xhr.responseText);
+					if (!response["success"]) {
+						$("#remark")[0].innerHTML = "Error: " + xhr.responseText;
+					} else {
+						$("#remark")[0].innerHTML = "Uploading done. Rebooting.";
+						doReboot();
+					}
+				}
+			}
+			if (typeof xhr.upload.onprogress != 'undefined') {
+				xhr.upload.onprogress = function (e) {
+					setProgress(e.loaded / e.total);
+				}
+			}
+			xhr.send(f);
+			return false;
+		}
 
 
-window.onload=function(e) {
-	xhr.open("GET", "next");
-	xhr.onreadystatechange=function() {
-		if (xhr.readyState==4 && xhr.status>=200 && xhr.status<300) {
-			var txt="Please upload "+xhr.responseText+" or ota file.";
-			$("#remark").innerHTML=txt;
-			setProgress(0);
+		window.onload = function (e) {
+			xhr.open("GET", "next");
+			xhr.onreadystatechange = function () {
+				if (xhr.readyState == 4 && xhr.status >= 200 && xhr.status < 300) {
+					var txt = "Please upload " + xhr.responseText + " or ota file.";
+					$("#remark")[0].innerHTML = txt;
+					setProgress(0);
+				}
+			}
+			xhr.send();
 		}
-	}
-	xhr.send();
-}
 
-</script>
+	</script>
 </head>
+
 <body>
-<div id="main">
-<h1>Update firmware</h1>
-<div id="remark">Loading...</div>
-<input type="file" id="file" />
-<input type="submit" value="Upgrade!" onclick="doUpgrade()" />
-<div id="progressbar"><div id="progressbarinner"></div></div>
+	<div id="main">
+		<h1>Update firmware</h1>
+		<div id="remark">Loading...</div>
+		<input type="file" id="file" />
+		<input type="submit" value="Upgrade!" onclick="doUpgrade()" />
+		<div id="progressbar">
+			<div id="progressbarinner"></div>
+		</div>
 </body>
