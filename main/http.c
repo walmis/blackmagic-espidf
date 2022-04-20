@@ -242,12 +242,12 @@ HttpdBuiltInUrl builtInUrls[] = {
     //  {"/led.tpl", cgifrogfsTemplate, tplLed},
     //  {"/index.tpl", cgifrogfsTemplate, tplCounter},
     //  {"/led.cgi", cgiLed, NULL},
-    //#ifndef ESP32
     {"/flash/", cgiRedirect, (const void *)"/flash/index.html", 0},
-    //{"/flash/next", cgiGetFirmwareNext, &uploadParams, 0},
+    {"/flash", cgiRedirect, (const void *)"/flash/index.html", 0},
+    {"/flash/next", cgiGetFirmwareNext, &uploadParams, 0},
     {"/flash/upload", cgiUploadFirmware, &uploadParams, 0},
     {"/flash/reboot", cgiRebootFirmware, NULL, 0},
-    //#endif
+
     //  //Routines to make the /wifi URL and everything beneath it work.
     //
     ////Enable the line below to protect the WiFi configuration with an username/password combo.
