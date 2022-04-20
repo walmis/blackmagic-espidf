@@ -524,6 +524,12 @@ extern void gdb_net_task();
 void app_main(void)
 {
 
+    gpio_reset_pin(CONFIG_LED_GPIO);
+    gpio_set_direction(CONFIG_LED_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_level(CONFIG_LED_GPIO, 1);
+    extern void esp32_spi_mux_out(int pin, int out_signal);
+    esp32_spi_mux_out(CONFIG_LED_GPIO, SIG_GPIO_OUT_IDX | (1 << 10));
+
     // Initialize debugging early, since the handover happens first.
     CBUF_Init(dbg_msg_queue);
     dbg_msg_queue.sem = xSemaphoreCreateBinary();

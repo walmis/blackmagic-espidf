@@ -35,7 +35,7 @@ void platform_set_baud(uint32_t baud);
 
 #define SET_RUN_STATE(state)
 #define SET_IDLE_STATE(state)
-#define SET_ERROR_STATE(state)
+#define SET_ERROR_STATE(state) gpio_set_level(CONFIG_LED_GPIO, !state)
 
 #define ENABLE_DEBUG 1
 #define DEBUG(x, ...)                        \
