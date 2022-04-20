@@ -80,7 +80,7 @@ const esp_partition_t *running_part;
 
 void ota_tftp_init_server(int listen_port, int prio)
 {
-    xTaskCreate(tftp_task, "tftpOTATask", 1500, (void *)listen_port, prio, NULL);
+    xTaskCreate(tftp_task, "tftpOTATask", 2500, (void *)listen_port, prio, NULL);
 }
 
 static int ota_tftp_init() {
