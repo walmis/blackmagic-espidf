@@ -1,71 +1,5 @@
 menu "Blackmagic Configuration"
 
-    choice ESP_WIFI_MODE
-        prompt "AP or STA"
-        default ESP_WIFI_IS_SOFTAP
-        help
-        Whether the esp32 is softAP or station.
-
-    config ESP_WIFI_IS_SOFTAP
-        bool "SoftAP"
-    config ESP_WIFI_IS_STATION
-        bool "Station"
-    endchoice
-
-    config ESP_WIFI_MODE_AP
-        bool
-        default y if ESP_WIFI_IS_SOFTAP
-        default n if ESP_WIFI_IS_STATION
-
-    config ESP_WIFI_SSID
-        string "WiFi SSID"
-        default "auto"
-        help
-           SSID (network name) for ap and sta modes.
-           auto - generates name automatically when in ap mode using mac address for ex. blackmagic_27FCF5E
-
-    config ESP_WIFI_PASSWORD
-        string "WiFi Password"
-        default "helloworld"
-        help
-           WiFi password (WPA or WPA2) for the example to use.
-
-    config ESP_WIFI_SSID2
-        string "WiFi SSID 2"
-        default ""
-        help
-           SSID (network name) for 2nd network
-
-    config ESP_WIFI_PASSWORD2
-        string "WiFi Password 2"
-        default ""
-        help
-           WiFi password (WPA or WPA2) for 2nd network.
-
-    config ESP_WIFI_SSID3
-        string "WiFi SSID 3"
-        default ""
-        help
-           SSID (network name) for 3rd network
-
-    config ESP_WIFI_PASSWORD3
-        string "WiFi Password 3"
-        default ""
-        help
-           WiFi password (WPA or WPA2) for 3rd network.
-
-    config ESP_WIFI_SSID4
-        string "WiFi SSID 4"
-        default ""
-        help
-           SSID (network name) for 4th network
-
-    config ESP_WIFI_PASSWORD4
-        string "WiFi Password 4"
-        default ""
-        help
-           WiFi password (WPA or WPA2) for 4th network.
-
     config MAX_STA_CONN
         int "Max STA conn"
         default 4
@@ -107,6 +41,12 @@ menu "Blackmagic Configuration"
         default 12
         help
         Reset GPIO Number
+
+    config LED_GPIO
+        int "LED GPIO"
+        default 13
+        help
+        Power LED GPIO Number
 
     choice TARGET_UART
         prompt "Target UART"
