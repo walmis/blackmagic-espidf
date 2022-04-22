@@ -11,8 +11,6 @@ idf_component_register(
                  "blackmagic/src/target/jtagtap_generic.c"
                  "blackmagic/src/target/swdptap_generic.c"
                  "blackmagic/src/exception.c"
-                 "blackmagic/src/gdb_main.c"
-                 "blackmagic/src/gdb_packet.c"
                  "blackmagic/src/main.c"
     INCLUDE_DIRS "."
                  "blackmagic/src/target"

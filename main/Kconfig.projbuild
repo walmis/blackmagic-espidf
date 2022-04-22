@@ -94,4 +94,10 @@ menu "Blackmagic Configuration"
         help
         Hostname for the blackmagic probe.
 
+    config TCP_PORT
+        int "TCP port number"
+        default 2022
+        help
+        TCP port number that the GDB server will run on
+
 endmenu
