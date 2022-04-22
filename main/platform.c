@@ -118,7 +118,7 @@ struct
 void platform_init(void)
 {
     {
-        gpio_config_t gpio_conf = {
+        const gpio_config_t gpio_conf = {
             .pin_bit_mask = BIT64(CONFIG_TMS_SWDIO_GPIO),
             .mode = GPIO_MODE_OUTPUT,
             .pull_up_en = 0,
@@ -129,7 +129,7 @@ void platform_init(void)
         gpio_set_level(CONFIG_TMS_SWDIO_GPIO, 1);
     }
     {
-        gpio_config_t gpio_conf = {
+        const gpio_config_t gpio_conf = {
             .pin_bit_mask = BIT64(CONFIG_TCK_SWCLK_GPIO),
             .mode = GPIO_MODE_OUTPUT,
             .pull_up_en = 0,
@@ -140,13 +140,14 @@ void platform_init(void)
         gpio_set_level(CONFIG_TMS_SWDIO_GPIO, 1);
     }
     {
-        gpio_config_t gpio_conf = {
+        const gpio_config_t gpio_conf = {
             .pin_bit_mask = BIT64(CONFIG_SRST_GPIO),
-            .mode = GPIO_MODE_INPUT,
+            .mode = GPIO_MODE_OUTPUT,
             .pull_up_en = 0,
             .pull_down_en = 0,
             .intr_type = GPIO_INTR_DISABLE,
         };
+        gpio_set_level(CONFIG_SRST_GPIO, 1);
         gpio_config(&gpio_conf);
     }
 }
