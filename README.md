@@ -1,7 +1,9 @@
 
 # Introduction
 
-blackmagic-espidf is a project which aims to support debugging SWD and JTAG targets over wifi by integrating [blackmagic](https://github.com/blacksphere/blackmagic) probe firmware to the espressif IDF platform for esp8266.
+blackmagic-espidf is a project which aims to support debugging SWD and JTAG targets over wifi by integrating [blackmagic](https://github.com/blacksphere/blackmagic) probe firmware to the espressif IDF platform for ESP32.
+
+This is based on [blackmagic-espidf for ESP8266](https://github.com/walmis/blackmagic-espidf) and has undergone extensive rewriting to make it work with ESP32.
 
 ## Features
 - **NEW** Automatic Attach to target on connect to GDB server
@@ -44,19 +46,25 @@ STMCubeIDE settings
 
 ## Requirements
 
-esp8266 module with >= 2MB flash. Default configuration is set for 4MB flash for OTA updates. It's possible to configure for other flash sizes. see `make menuconfig`
+ESP32 module with >= 2MB flash. Default configuration is set for 4MB flash for OTA updates. It's possible to configure for other flash sizes. see `make menuconfig`
 
 By disabling OTA it should work on 1MB devices.
 
-## GPIO defaults for esp8266
+## GPIO defaults for ESP32
 
-GPIO0 - SWDIO
+GPIO27 - SWDIO / TMS
 
-GPIO2 - SWCLK
+GPIO17 - SWCLK / TCK
 
-TX0 - UART TXD
+GPIO19 - TDO
 
-RX0  - UART RXD
+GPIO5 - nRST
+
+GPIO13 - Power LED
+
+GPIO18 - UART TXD
+
+GPIO22 - UART RXD
 
 ## Serial terminal
 
@@ -68,40 +76,27 @@ socat tcp:192.168.4.1:23,crlf -,echo=0,raw,crlf
 
 ## Building
 
-Grab the toolchain from https://github.com/espressif/ESP8266_RTOS_SDK#developing-with-the-esp8266_rtos_sdk  and add it to $PATH.
+[Install ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/v4.4.1/esp32/get-started/index.html). Then build this project.
 
 ```bash
 git clone --recursive https://github.com/walmis/blackmagic-espidf.git
 cd blackmagic-espidf
-make menuconfig # optional, if you want to change some settings
-make
+idf.py menuconfig # optional, if you want to change some settings
+idf.py make
 make flash # this will flash using esptool.py over serial connection
 ```
 
-### Station Mode Configuration
-
-To use the ESP8266 in Station mode, in the Blackmagic configuration section:
-- Configure Station mode
-- Specify the SSID and password you wish to connect to.  *NOTE: The SSID is case sensitive*
-- (optional) Specify a hostname to make it easier to connect to the probe.
-
-### Development/Debug Configuration
-
-When working on blackmagic-espidf it is frequently desirable to continue to use the ESP8266 UART for debugging.  To achieve this you can disable `Monitor target UART` in the Blackmagic configuration section.
-
-In this mode you will be unable to use the ESP UART to monitor the target and connecting the ESP UART to the target may result in undefined behavior since the debug messages will be sent to the target.
-
 ## OTA Flashing
 
-If the firmware is already on the esp8266 device, it is possible to flash using tftp. Make sure you have tftp-hpa package installed then run:
+If the firmware is already on the ESP32 device, it is possible to flash using tftp. Make sure you have tftp-hpa package installed then run:
 
 ```bash
-make tftpflash
+tftp -v -m octet 192.168.4.1 -c put build/blackmagic.bin firmware.bin
 ```
 
 ## Buy me a coffee
 
-If you find this project useful, consider buying me a coffee :-)
+If you find this project useful, consider buying the original author a coffee :-)
 
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=66JLPHXMD3XW2)
 
