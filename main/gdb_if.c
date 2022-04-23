@@ -141,7 +141,7 @@ static void gdb_wifi_task(void *arg)
 	ESP_LOGI("GDB_client", "Started task %d this:%p tlsp:%p mowner:%p", instance->sock, instance, tls,
 		 xQueueGetMutexHolder(gdb_mutex));
 
-	int opt = 0;
+	int opt = 1;
 	setsockopt(instance->sock, IPPROTO_TCP, TCP_NODELAY, (void *)&opt, sizeof(opt));
 	opt = 1; /* SO_KEEPALIVE */
 	setsockopt(instance->sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&opt, sizeof(opt));
