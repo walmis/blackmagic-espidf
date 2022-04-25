@@ -70,6 +70,10 @@ menu "Blackmagic Configuration"
         default 2 if TARGET_UART2
         default 1
 
+    config TRACE_SWO_UART_IDX
+        int
+        default 2
+
     config UART_TX_GPIO
         int "UART TX pin"
         default 26
