@@ -143,36 +143,10 @@ static const char *core_str(int core_id)
 	}
 }
 
-CgiStatus cgi_status(HttpdConnData *connData)
+static void cgi_status_header(HttpdConnData *connData)
 {
 	int len;
 	char buff[256];
-
-	if (connData->isConnectionClosed) {
-		// Connection aborted. Clean up.
-		return HTTPD_CGI_DONE;
-	}
-
-	static hashmap *task_times;
-	if (!task_times) {
-		task_times = hashmap_new();
-	}
-
-	uint32_t baud = 0;
-	uart_get_baudrate(0, &baud);
-
-	len = snprintf(buff, sizeof(buff),
-		       "free_heap: %u,\n"
-		       "uptime: %d ms\n"
-		       "baud_rate: %d,\n"
-		       "uart_overruns: %d\n"
-		       "uart_errors: %d\n"
-		       "uart_rx_full_cnt: %d\n"
-		       "uart_rx_count: %d\n"
-		       "uart_tx_count: %d\n"
-		       "tasks:\n",
-		       esp_get_free_heap_size(), xTaskGetTickCount() * portTICK_PERIOD_MS, baud, uart_overrun_cnt,
-		       uart_errors, uart_queue_full_cnt, uart_rx_count, uart_tx_count);
 
 	httpdStartResponse(connData, 200);
 	httpdHeader(connData, "Cache-Control", "no-store, must-revalidate, no-cache, max-age=0");
@@ -181,59 +155,106 @@ CgiStatus cgi_status(HttpdConnData *connData)
 
 	httpdEndHeaders(connData);
 
+	uint32_t baud0 = 0;
+	uint32_t baud1 = 0;
+	uint32_t baud2 = 0;
+	uart_get_baudrate(0, &baud0);
+	uart_get_baudrate(1, &baud1);
+	uart_get_baudrate(2, &baud2);
+
+	len = snprintf(buff, sizeof(buff) - 1,
+		       "free_heap: %u,\n"
+		       "uptime: %d ms\n"
+		       "debug_baud_rate: %d,\n"
+		       "target_baud_rate: %d,\n"
+		       "swo_baud_rate: %d,\n"
+		       "uart_overruns: %d\n"
+		       "uart_errors: %d\n"
+		       "uart_rx_full_cnt: %d\n"
+		       "uart_rx_count: %d\n"
+		       "uart_tx_count: %d\n"
+		       "tasks:\n",
+		       esp_get_free_heap_size(), xTaskGetTickCount() * portTICK_PERIOD_MS, baud0, baud1, baud2,
+		       uart_overrun_cnt, uart_errors, uart_queue_full_cnt, uart_rx_count, uart_tx_count);
 	httpdSend(connData, buff, len);
+}
 
-	int uxArraySize = uxTaskGetNumberOfTasks();
-	TaskStatus_t *pxTaskStatusArray = malloc(uxArraySize * sizeof(TaskStatus_t));
+struct cgi_status_state {
+	TaskStatus_t *pxTaskStatusArray;
+	int i;
+	int uxArraySize;
 	uint32_t total_runtime;
-	uint32_t tmp;
-	static uint32_t last_total_runtime;
-	if (pxTaskStatusArray != NULL) {
-		/* Generate the (binary) data. */
-		uxArraySize = uxTaskGetSystemState(pxTaskStatusArray, uxArraySize, &total_runtime);
-		tmp = total_runtime;
-		total_runtime = total_runtime - last_total_runtime;
-		last_total_runtime = tmp;
-		total_runtime /= 100;
-		if (total_runtime == 0)
-			total_runtime = 1;
+};
 
-		qsort(pxTaskStatusArray, uxArraySize, sizeof(TaskStatus_t), task_status_cmp);
-
-		for (int i = 0; i < uxArraySize; i++) {
-			TaskStatus_t *tsk = &pxTaskStatusArray[i];
-
-			uint32_t last_task_time = tsk->ulRunTimeCounter;
-			hashmap_get(task_times, tsk->xTaskNumber, &last_task_time);
-			hashmap_set(task_times, tsk->xTaskNumber, tsk->ulRunTimeCounter);
-			tsk->ulRunTimeCounter -= last_task_time;
-
-			// len = snprintf(buff, sizeof(buff), "\tid: %4u, name: %16s, prio: %3u, state: %8s, stack_hwm: %4u, cpu: %d%%, pc: 0x%08x [0x%08x] 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n",
-			//     tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority, task_state_name[tsk->eCurrentState], tsk->usStackHighWaterMark, tsk->ulRunTimeCounter / total_runtime,
-			//     (*((uint32_t **)tsk->xHandle))[0],
-			//     (*((uint32_t **)tsk->xHandle))[1],
-			//     (*((uint32_t **)tsk->xHandle))[2],
-			//     (*((uint32_t **)tsk->xHandle))[3],
-			//     (*((uint32_t **)tsk->xHandle))[4],
-			//     (*((uint32_t **)tsk->xHandle))[5],
-			//     (*((uint32_t **)tsk->xHandle))[6],
-			//     (*((uint32_t **)tsk->xHandle))[7]);
-			len = snprintf(buff, sizeof(buff),
-				       "\tid: %3u, name: %16s, prio: %3u, state: %10s, stack_hwm: %5u, core: %3s, cpu: "
-				       "%3d%%, pc: 0x%08x\n",
-				       tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority,
-				       task_state_name[tsk->eCurrentState], tsk->usStackHighWaterMark,
-				       core_str((int)tsk->xCoreID), tsk->ulRunTimeCounter / total_runtime,
-				       (*((uint32_t **)tsk->xHandle))[1]);
-
-			httpdSend(connData, buff, len);
-		}
+CgiStatus cgi_status(HttpdConnData *connData)
+{
+	static hashmap *task_times;
+	if (!task_times) {
+		task_times = hashmap_new();
 	}
 
-	free(pxTaskStatusArray);
+	if (connData->isConnectionClosed) {
+		// Connection aborted. Clean up.
+		return HTTPD_CGI_DONE;
+	}
 
-	len = snprintf(buff, sizeof(buff), "\n");
-	httpdSend(connData, buff, len);
+	struct cgi_status_state *state = (struct cgi_status_state *)connData->cgiData;
+	if (state == NULL) {
+		cgi_status_header(connData);
+		struct cgi_status_state *state = malloc(sizeof(struct cgi_status_state));
+		if (!state) {
+			return HTTPD_CGI_DONE;
+		}
+
+		int uxArraySize = uxTaskGetNumberOfTasks();
+		state->pxTaskStatusArray = malloc(uxArraySize * sizeof(TaskStatus_t));
+		state->uxArraySize = uxTaskGetSystemState(state->pxTaskStatusArray, uxArraySize, &state->total_runtime);
+		state->i = 0;
+
+		uint32_t tmp;
+		static uint32_t last_total_runtime;
+		/* Generate the (binary) data. */
+		tmp = state->total_runtime;
+		state->total_runtime = state->total_runtime - last_total_runtime;
+		last_total_runtime = tmp;
+		state->total_runtime /= 100;
+		if (state->total_runtime == 0)
+			state->total_runtime = 1;
+
+		qsort(state->pxTaskStatusArray, state->uxArraySize, sizeof(TaskStatus_t), task_status_cmp);
+
+		connData->cgiData = state;
+		return HTTPD_CGI_MORE;
+	}
+
+	if (state->pxTaskStatusArray != NULL && state->i < state->uxArraySize) {
+		int len;
+		char buff[256];
+		TaskStatus_t *tsk = &state->pxTaskStatusArray[state->i];
+
+		uint32_t last_task_time = tsk->ulRunTimeCounter;
+		hashmap_get(task_times, tsk->xTaskNumber, &last_task_time);
+		hashmap_set(task_times, tsk->xTaskNumber, tsk->ulRunTimeCounter);
+		tsk->ulRunTimeCounter -= last_task_time;
+
+		len = snprintf(buff, sizeof(buff),
+			       "\tid: %3u, name: %16s, prio: %3u, state: %10s, stack_hwm: %5u, core: %3s, cpu: "
+			       "%3d%%, pc: 0x%08x\n",
+			       tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority,
+			       task_state_name[tsk->eCurrentState], tsk->usStackHighWaterMark,
+			       core_str((int)tsk->xCoreID), tsk->ulRunTimeCounter / state->total_runtime,
+			       (*((uint32_t **)tsk->xHandle))[1]);
+
+		httpdSend(connData, buff, len);
+		state->i++;
+		return HTTPD_CGI_MORE;
+	}
+
+	free(state->pxTaskStatusArray);
+	free(state);
+	connData->cgiData = NULL;
+
+	httpdSend(connData, "\n", 1);
 
 	return HTTPD_CGI_DONE;
 }
