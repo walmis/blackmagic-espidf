@@ -127,6 +127,22 @@ static const char *const task_state_name[] = {
 	"eInvalid"  /* Used as an 'invalid state' value. */
 };
 
+static const char *core_str(int core_id)
+{
+	switch (core_id) {
+	case 0:
+		return "0";
+	case 1:
+		return "1";
+	case 2147483647:
+		return "ANY";
+	case -1:
+		return "any";
+	default:
+		return "???";
+	}
+}
+
 CgiStatus cgi_status(HttpdConnData *connData)
 {
 	int len;
@@ -203,11 +219,12 @@ CgiStatus cgi_status(HttpdConnData *connData)
 			//     (*((uint32_t **)tsk->xHandle))[6],
 			//     (*((uint32_t **)tsk->xHandle))[7]);
 			len = snprintf(buff, sizeof(buff),
-				       "\tid: %4u, name: %16s, prio: %3u, state: %8s, stack_hwm: %4u, core: %3d, cpu: "
-				       "%d%%, pc: 0x%08x\n",
+				       "\tid: %3u, name: %16s, prio: %3u, state: %10s, stack_hwm: %5u, core: %3s, cpu: "
+				       "%3d%%, pc: 0x%08x\n",
 				       tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority,
-				       task_state_name[tsk->eCurrentState], tsk->usStackHighWaterMark, (int)tsk->xCoreID,
-				       tsk->ulRunTimeCounter / total_runtime, (*((uint32_t **)tsk->xHandle))[1]);
+				       task_state_name[tsk->eCurrentState], tsk->usStackHighWaterMark,
+				       core_str((int)tsk->xCoreID), tsk->ulRunTimeCounter / total_runtime,
+				       (*((uint32_t **)tsk->xHandle))[1]);
 
 			httpdSend(connData, buff, len);
 		}
