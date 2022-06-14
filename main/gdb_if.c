@@ -192,6 +192,15 @@ static void gdb_wifi_destroy(struct gdb_wifi_instance *instance)
 
 unsigned char gdb_wifi_if_getchar_to(struct gdb_wifi_instance *instance, int timeout)
 {
+	// Optimization for "MSG_PEEK"
+	if (timeout == 0) {
+		uint8_t tmp;
+		int ret = recv(instance->sock, &tmp, 1, MSG_DONTWAIT);
+		if (ret == 1) {
+			return tmp;
+		}
+		return 0xFF;
+	}
 	fd_set fds;
 	struct timeval tv;
 
@@ -201,7 +210,7 @@ unsigned char gdb_wifi_if_getchar_to(struct gdb_wifi_instance *instance, int tim
 	FD_ZERO(&fds);
 	FD_SET(instance->sock, &fds);
 
-	if (select(instance->sock + 1, &fds, NULL, NULL, (timeout >= 0) ? &tv : NULL) > 0) {
+	if (select(instance->sock + 1, &fds, NULL, NULL, &tv) > 0) {
 		char c = gdb_wifi_if_getchar(instance);
 		return c;
 	}
@@ -241,102 +250,6 @@ static void gdb_wifi_if_putchar(struct gdb_wifi_instance *instance, unsigned cha
 		instance->bufsize = 0;
 	}
 }
-
-// static void gdb_wifi_putpacket(struct gdb_wifi_instance *instance, const char *packet, int size, char pktstart)
-// {
-// 	int i;
-// 	unsigned char csum;
-// 	unsigned char c;
-// 	char xmit_csum[3];
-// 	int tries = 0;
-
-// 	if (packet == NULL) {
-//     	ESP_LOGE(__func__, "gdb_putpacket packet is NULL");
-// 	}
-// 	do {
-// 		DEBUG_GDB_WIRE("%s : ", __func__);
-// 		csum = 0;
-// 		gdb_wifi_if_putchar(instance, pktstart, 0);
-// 		for(i = 0; i < size; i++) {
-// 			c = packet[i];
-// #if PC_HOSTED == 1
-// 			if ((c >= 32) && (c < 127))
-// 				DEBUG_GDB_WIRE("%c", c);
-// 			else
-// 				DEBUG_GDB_WIRE("\\x%02X", c);
-// #endif
-// 			if((c == '$') || (c == '#') || (c == '}') || (c == '*')) {
-// 				gdb_wifi_if_putchar(instance, '}', 0);
-// 				gdb_wifi_if_putchar(instance, c ^ 0x20, 0);
-// 				csum += '}' + (c ^ 0x20);
-// 			} else {
-// 				gdb_wifi_if_putchar(instance, c, 0);
-// 				csum += c;
-// 			}
-// 		}
-// 		gdb_wifi_if_putchar(instance, '#', 0);
-// 		snprintf(xmit_csum, sizeof(xmit_csum), "%02X", csum);
-// 		gdb_wifi_if_putchar(instance, xmit_csum[0], 0);
-// 		gdb_wifi_if_putchar(instance, xmit_csum[1], 1);
-// 		DEBUG_GDB_WIRE("\n");
-// 	} while(!instance->no_ack_mode && (gdb_wifi_if_getchar_to(instance, 2000) != '+') && (tries++ < 3));
-// }
-
-// static void gdb_wifi_putpacket_f(struct gdb_wifi_instance *instance, const char *fmt, ...)
-// {
-// 	va_list ap;
-// 	char *buf;
-// 	int size;
-
-// 	va_start(ap, fmt);
-// 	size = vasprintf(&buf, fmt, ap);
-// 	gdb_wifi_putpacket(instance, buf, size, '$');
-// 	free(buf);
-// 	va_end(ap);
-// }
-
-// static void gdb_wifi_putnotifpacket_f(struct gdb_wifi_instance *instance, const char *fmt, ...)
-// {
-// 	va_list ap;
-// 	char *buf;
-// 	int size;
-
-// 	va_start(ap, fmt);
-// 	size = vasprintf(&buf, fmt, ap);
-// 	gdb_wifi_putpacket(instance, buf, size, '%');
-// 	free(buf);
-// 	va_end(ap);
-// }
-
-// static void gdb_wifi_out(struct gdb_wifi_instance *instance, const char *buf)
-// {
-// 	char *hexdata;
-// 	int i;
-
-// 	hexdata = (char *)alloca((i = strlen(buf) * 2 + 1) + 1);
-// 	hexdata[0] = 'O';
-// 	hexify(hexdata + 1, buf, strlen(buf));
-// 	gdb_wifi_putpacket_f(instance, hexdata, i);
-// }
-
-// static void gdb_wifi_voutf(struct gdb_wifi_instance *instance, const char *fmt, va_list ap)
-// {
-// 	char *buf;
-
-// 	if (vasprintf(&buf, fmt, ap) < 0)
-// 		return;
-// 	gdb_wifi_out(instance, buf);
-// 	free(buf);
-// }
-
-// static void gdb_wifi_outf(struct gdb_wifi_instance *instance, const char *fmt, ...)
-// {
-// 	va_list ap;
-
-// 	va_start(ap, fmt);
-// 	gdb_wifi_voutf(instance, fmt, ap);
-// 	va_end(ap);
-// }
 
 void gdb_net_task(void *arg)
 {
@@ -388,52 +301,8 @@ void gdb_if_putchar(unsigned char c, int flush)
 	gdb_wifi_if_putchar(ptr[0], c, flush);
 }
 
-// void gdb_out(const char *buf)
-// {
-// 	void **ptr = (void **)pvTaskGetThreadLocalStoragePointer(NULL, GDB_TLS_INDEX);
-// 	assert(ptr);
-// 	gdb_wifi_out(ptr[0], buf);
-// }
-
-// void gdb_voutf(const char *fmt, va_list ap)
-// {
-// 	void **ptr = (void **)pvTaskGetThreadLocalStoragePointer(NULL, GDB_TLS_INDEX);
-// 	assert(ptr);
-// 	gdb_wifi_voutf(ptr[0], fmt, ap);
-// }
-
-// void gdb_outf(const char *fmt, ...)
-// {
-// 	va_list ap;
-// 	va_start(ap, fmt);
-// 	void **ptr = (void **)pvTaskGetThreadLocalStoragePointer(NULL, GDB_TLS_INDEX);
-// 	assert(ptr);
-// 	gdb_wifi_voutf(ptr[0], fmt, ap);
-// 	va_end(ap);
-// }
-
-// void gdb_putpacket(const char *packet, int size)
-// {
-// 	void **ptr = (void **)pvTaskGetThreadLocalStoragePointer(NULL, GDB_TLS_INDEX);
-// 	assert(ptr);
-// 	gdb_wifi_putpacket_f(ptr[0], packet, size);
-// }
-
-// void gdb_putpacket_f(const char *fmt, ...)
-// {
-// 	va_list ap;
-// 	va_start(ap, fmt);
-// 	void **ptr = (void **)pvTaskGetThreadLocalStoragePointer(NULL, GDB_TLS_INDEX);
-// 	assert(ptr);
-// 	gdb_wifi_putpacket_f(ptr[0], fmt, ap);
-// 	va_end(ap);
-// }
-
 void gdb_target_printf(struct target_controller *tc, const char *fmt, va_list ap)
 {
 	(void)tc;
-	// void **ptr = (void **)pvTaskGetThreadLocalStoragePointer(NULL, GDB_TLS_INDEX);
-	// assert(ptr);
-	// gdb_wifi_voutf(ptr[0], fmt, ap);
 	gdb_voutf(fmt, ap);
 }

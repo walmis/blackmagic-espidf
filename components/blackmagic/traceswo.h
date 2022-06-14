@@ -28,6 +28,7 @@ void traceswo_baud(unsigned int baud);
 #else
 void traceswo_init(uint32_t swo_chan_bitmask);
 #endif
+void traceswo_deinit(void);
 
 /* set bitmask of swo channels to be decoded */
 void traceswo_setmask(uint32_t mask);
