@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <script>
+        var refreshIntervalMsecs = 1000;
+        var timeoutMsecs = 2000;
+
+        function createXHR() {
+            var xhr = new XMLHttpRequest();
+            xhr.timeout = timeoutMsecs;
+            xhr.ontimeout = function () {
+                console.log("Timed out!");
+                createXHR().send();
+            };
+
+            xhr.open('GET', '/status');
+            xhr.onload = function () {
+                if (xhr.readyState === xhr.DONE) {
+                    if (xhr.status == 200) {
+                        document.getElementById("status").innerText = xhr.response;
+                    }
+                    window.setTimeout(function () { createXHR().send(); }, refreshIntervalMsecs);
+                }
+            };
+            return xhr;
+        }
+        createXHR().send();
+    </script>
+</head>
+
+<body>
+    <pre><code id="status"></code></div>
+</body>
+</html>
