@@ -1,55 +1,79 @@
 <!doctype html>
-  <html>
-    <head>
-      <link rel="stylesheet" href="xterm.css" />
-      <script src="xterm.js"></script>
-      <script src="xterm-addon-fit.js"></script>
-    </head>
-    <style>
-     body {
-       font-family: sans;
-     }
-    </style>
-    <body>
-      <div id="terminal" style="height: 90vh" ></div>
-      
-      <script>
-        var line_items = [];
-        var idx = -1;
+<html>
 
-        
-        var term = new Terminal({cursorBlink: true, convertEol: true });
-        var fitAddon = new FitAddon.FitAddon();
-        term.loadAddon(fitAddon);
-        
-        var socket = new WebSocket("ws://" + window.location.host + "/debugws");
-        socket.binaryType = 'arraybuffer';
-        socket.onopen = function(e) {
-          term.write("\x1B[1;3;31m[Websocket] Connection established\x1B[0m\r\n");
-        };
+<head>
+  <link rel="stylesheet" href="xterm.css" />
+  <script src="xterm.js"></script>
+  <script src="xterm-addon-fit.js"></script>
+</head>
+<style>
+  body {
+    font-family: sans;
+  }
+</style>
 
-        socket.onmessage = function(event) {
-            term.write(new Uint8Array(event.data));          
-        };
+<body>
+  <div id="terminal" style="height: 90vh"></div>
 
-        socket.onclose = function(event) {
-          if (event.wasClean) {
-            term.write("[Websocket] Connection closed");
-          } else {
-            // e.g. server process killed or network down
-            // event.code is usually 1006 in this case
-            term.write("[Websocket] Connection died");
-          }
-        };
+  <script>
+    var line_items = [];
+    var idx = -1;
 
-        term.open(document.getElementById('terminal'));
-        
-        fitAddon.activate(term)
-        fitAddon.fit()
-        term.focus()
-        
-        window.addEventListener('resize', () => { fitAddon.fit() } );
-        
-      </script>
-    </body>
-  </html>
+
+    var term = new Terminal({ cursorBlink: true, convertEol: true });
+    var fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+
+    var socket;
+
+    function createSocket() {
+      socket = new WebSocket("ws://" + window.location.host + "/debugws");
+      socket.binaryType = 'arraybuffer';
+      socket.ontimeout = function () {
+        if (socket.readyState == WebSocket.OPEN) {
+          console.log("Poking timeout on " + socket);
+          socket.send('');
+        }
+      };
+
+      socket.onopen = function (e) {
+        term.write("\x1B[1;3;31m[Websocket] Connection established\x1B[0m\r\n");
+      };
+
+      socket.onmessage = function (event) {
+        term.write(new Uint8Array(event.data));
+      };
+
+      socket.onerror = function (event) {
+        term.write("socket had an error: " + event);
+        clearInterval(socket.intervalId);
+        createSocket();
+      }
+
+      socket.onclose = function (event) {
+        if (event.wasClean) {
+          term.write("[Websocket] Connection closed");
+        } else {
+          // e.g. server process killed or network down
+          // event.code is usually 1006 in this case
+          term.write("[Websocket] Connection died");
+        }
+        clearInterval(socket.intervalId);
+        createSocket();
+      };
+      socket.intervalId = setInterval(socket.ontimeout, 2000, socket);
+    }
+    createSocket();
+
+    term.open(document.getElementById('terminal'));
+
+    fitAddon.activate(term)
+    fitAddon.fit()
+    term.focus()
+
+    window.addEventListener('resize', () => { fitAddon.fit() });
+
+  </script>
+</body>
+
+</html>
