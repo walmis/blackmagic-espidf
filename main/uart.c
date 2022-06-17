@@ -45,7 +45,6 @@ static struct sockaddr_in udp_peer_addr;
 static int tcp_serv_sock;
 static int udp_serv_sock;
 static int tcp_client_sock = 0;
-extern nvs_handle h_nvs_conf;
 
 // UART statistics counters
 uint32_t uart_overrun_cnt;
@@ -226,14 +225,40 @@ uint32_t uart_rx_data_relay;
 static void IRAM_ATTR uart_rx_task(void *parameters)
 {
 	(void)parameters;
-	uint8_t buf[256];
+	uint8_t buf[1024];
 	int ret;
 	int count;
+	extern nvs_handle h_nvs_conf;
+
+	uint32_t baud = 115200;
+	nvs_get_u32(h_nvs_conf, "uartbaud", &baud);
+
+	uart_config_t uart_config = {
+		.baud_rate = baud,
+		.data_bits = UART_DATA_8_BITS,
+		.parity = UART_PARITY_DISABLE,
+		.stop_bits = UART_STOP_BITS_1,
+		.flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+		.rx_flow_ctrl_thresh = 120,
+		.use_ref_tick = 0,
+	};
+	ESP_ERROR_CHECK(uart_set_pin(CONFIG_TARGET_UART_IDX, CONFIG_UART_TX_GPIO, CONFIG_UART_RX_GPIO,
+				     UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+
+	// Install the driver while running on Core 1 in order to ensure the UART DMA interrupt
+	// runs on Core 1.
+	ESP_ERROR_CHECK(
+	    uhci_driver_install(UHCI_INDEX, 128, 16384, ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_LEVEL1, NULL, 0));
+	ESP_ERROR_CHECK(uhci_attach_uart_port(UHCI_INDEX, CONFIG_TARGET_UART_IDX, &uart_config));
 
 	while (1) {
-		count = uart_dma_read(UHCI_INDEX, buf, sizeof(buf), pdMS_TO_TICKS(20));
+		count = uart_dma_read(UHCI_INDEX, buf, sizeof(buf), portMAX_DELAY);
 		if (count <= 0) {
 			continue;
+		}
+		if (count > sizeof(buf)) {
+			ESP_LOGE(__func__, "count is %d, which is larger than buf size %d", count, sizeof(buf));
+			assert(count <= sizeof(buf));
 		}
 		uart_rx_count += count;
 
@@ -290,25 +315,8 @@ void uart_init(void)
 #if !defined(CONFIG_TARGET_UART_NONE)
 	ESP_LOGI(__func__, "configuring UART%d for target", CONFIG_TARGET_UART_IDX);
 
-	uint32_t baud = 115200;
-	nvs_get_u32(h_nvs_conf, "uartbaud", &baud);
-
-	uart_config_t uart_config = {
-		.baud_rate = baud,
-		.data_bits = UART_DATA_8_BITS,
-		.parity = UART_PARITY_DISABLE,
-		.stop_bits = UART_STOP_BITS_1,
-		.flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-		.rx_flow_ctrl_thresh = 120,
-		.use_ref_tick = 0,
-	};
-	ESP_ERROR_CHECK(uart_set_pin(CONFIG_TARGET_UART_IDX, CONFIG_UART_TX_GPIO, CONFIG_UART_RX_GPIO,
-				     UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-	ESP_ERROR_CHECK(uhci_driver_install(UHCI_INDEX, 128, 16384, ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_LEVEL1, NULL, 0));
-	ESP_ERROR_CHECK(uhci_attach_uart_port(UHCI_INDEX, CONFIG_TARGET_UART_IDX, &uart_config));
-
 	// Start UART tasks
-	xTaskCreate(uart_rx_task, "uart_rx_task", TCP_MSS + 2048, NULL, 1, NULL);
+	xTaskCreatePinnedToCore(uart_rx_task, "uart_rx_task", 4096, NULL, 1, NULL, 1);
 	xTaskCreate(net_uart_task, "net_uart_task", TCP_MSS + 4096, NULL, 1, NULL);
 
 #endif
