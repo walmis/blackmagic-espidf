@@ -258,15 +258,16 @@ int IRAM_ATTR uart_dma_read(int uhci_num, uint8_t *addr, size_t read_size, TickT
 	size_t rd_rem = read_size;
 
 	// When `ticks_to_wait == portMAX_DELAY`, We may encounter a situation where the ringbuffer
-	// is empty and the `rx_buffer_full == true`, the data in the DMA buffer needs to be cpoy to
-	// the ringbuffer in this function. in order to avoid blocking at `xRingbufferReceive`,
+	// is empty and the `rx_buffer_full == true`, the data in the DMA buffer needs to be copied to
+	// the ringbuffer in this function. In order to avoid blocking at `xRingbufferReceive`,
 	// we set `tick_rem = 0` at the begin.
 	TickType_t tick_rem = 0;
 	TickType_t tick_end = xTaskGetTickCount() + ticks_to_wait;
 	if (xSemaphoreTake(uhci_obj[uhci_num]->rx_mux, (portTickType)ticks_to_wait) != pdTRUE) {
 		return 0;
 	}
-	while (rd_rem && (tick_rem <= ticks_to_wait)) {
+	// while (rd_rem && (tick_rem <= ticks_to_wait)) {
+	while ((rd_rem == read_size) && (tick_rem <= ticks_to_wait)) {
 		if (uhci_obj[uhci_num]->stash_len == 0) {
 			uhci_obj[uhci_num]->pread_cur = (uint8_t *)xRingbufferReceive(
 			    uhci_obj[uhci_num]->rx_ring_buf, &(uhci_obj[uhci_num]->stash_len), (TickType_t)tick_rem);
