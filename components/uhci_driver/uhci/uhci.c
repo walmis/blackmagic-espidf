@@ -125,6 +125,7 @@ static void IRAM_ATTR uhci_rx_start_dma_s(int uhci_num)
 		    (uint32_t) & (uhci_obj[uhci_num]->rx_dma[(i + 1) % DMA_RX_DESC_CNT]);
 	}
 	uhci_obj[uhci_num]->rx_cur = &uhci_obj[uhci_num]->rx_dma[0];
+	// assert(uhci_obj[uhci_num]->rx_cur != NULL);
 	uhci_hal_set_rx_dma(&(uhci_obj[uhci_num]->uhci_hal), (uint32_t)(&(uhci_obj[uhci_num]->rx_dma[0])));
 	uhci_hal_rx_dma_start(&(uhci_obj[uhci_num]->uhci_hal));
 }
@@ -151,6 +152,7 @@ static void IRAM_ATTR uhci_isr_default_new(void *param)
 		// handle RX interrupt */
 		if (intr_mask & (UHCI_INTR_IN_DONE | UHCI_INTR_IN_DSCR_EMPTY)) {
 			uhci_event_t event;
+			// assert(p_obj->rx_cur != NULL);
 			event.type = p_obj->rx_cur->eof ? UHCI_EVENT_EOF : UHCI_EVENT_DATA;
 			event.len = p_obj->rx_cur->length;
 			if (p_obj->rx_buffer_full == 0) {
@@ -166,7 +168,7 @@ static void IRAM_ATTR uhci_isr_default_new(void *param)
 					int front = (p_obj->rx_head - &(p_obj->rx_dma[0]) + DMA_RX_DESC_CNT - 1) %
 						    DMA_RX_DESC_CNT;
 					p_obj->rx_real = &(p_obj->rx_dma[front]);
-					p_obj->rx_real->empty = 0;
+					// p_obj->rx_real->empty = 0;
 				} else {
 					p_obj->buffered_len += p_obj->rx_cur->length;
 				}
@@ -186,6 +188,7 @@ static void IRAM_ATTR uhci_isr_default_new(void *param)
 			p_obj->rx_cur->owner = 1;
 			p_obj->rx_real = p_obj->rx_cur;
 			p_obj->rx_cur = (lldesc_t *)p_obj->rx_cur->empty;
+			// assert(p_obj->rx_cur != NULL);
 			if (p_obj->event_Queue &&
 			    xQueueSendFromISR(p_obj->event_Queue, (void *)&event, &HPTaskAwoken) == pdFALSE) {
 				ESP_EARLY_LOGV(UHCI_TAG, "UHCI EVENT Queue full");
@@ -363,6 +366,7 @@ esp_err_t uhci_driver_install(int uhci_num, size_t tx_buf_size, size_t rx_buf_si
 	puhci->tx_ring_buf = xRingbufferCreate(tx_buf_size, RINGBUF_TYPE_BYTEBUF);
 	puhci->tx_idle = true;
 	puhci->rx_cur = &(puhci->rx_dma[0]);
+	// assert(puhci->rx_cur != NULL);
 	puhci->uhci_num = uhci_num;
 	uhci_obj[uhci_num] = puhci;
 	uhci_dam_desc_init(uhci_num);

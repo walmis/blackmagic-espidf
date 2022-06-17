@@ -39,6 +39,8 @@
 #error "No target UART defined"
 #endif
 
+#define UHCI_INDEX 0
+
 static struct sockaddr_in udp_peer_addr;
 static int tcp_serv_sock;
 static int udp_serv_sock;
@@ -229,7 +231,7 @@ static void IRAM_ATTR uart_rx_task(void *parameters)
 	int count;
 
 	while (1) {
-		count = uart_dma_read(0, buf, sizeof(buf), pdMS_TO_TICKS(50));
+		count = uart_dma_read(UHCI_INDEX, buf, sizeof(buf), pdMS_TO_TICKS(20));
 		if (count <= 0) {
 			continue;
 		}
@@ -302,8 +304,8 @@ void uart_init(void)
 	};
 	ESP_ERROR_CHECK(uart_set_pin(CONFIG_TARGET_UART_IDX, CONFIG_UART_TX_GPIO, CONFIG_UART_RX_GPIO,
 				     UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-	ESP_ERROR_CHECK(uhci_driver_install(0 /*UHCI_NUM*/, 1024 * 2, 1024 * 2, ESP_INTR_FLAG_IRAM, NULL, 0));
-	ESP_ERROR_CHECK(uhci_attach_uart_port(0 /*UHCI_NUM*/, CONFIG_TARGET_UART_IDX, &uart_config));
+	ESP_ERROR_CHECK(uhci_driver_install(UHCI_INDEX, 128, 16384, ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_LEVEL1, NULL, 0));
+	ESP_ERROR_CHECK(uhci_attach_uart_port(UHCI_INDEX, CONFIG_TARGET_UART_IDX, &uart_config));
 
 	// Start UART tasks
 	xTaskCreate(uart_rx_task, "uart_rx_task", TCP_MSS + 2048, NULL, 1, NULL);

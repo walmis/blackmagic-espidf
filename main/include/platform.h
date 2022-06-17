@@ -22,7 +22,9 @@
 #define __PLATFORM_H
 
 #undef PRIx32
+#undef PRIX32
 #define PRIx32 "x"
+#define PRIX32 "x"
 
 #undef SCNx32
 #define SCNx32 "x"
@@ -37,6 +39,7 @@ void platform_set_baud(uint32_t baud);
 #define SET_IDLE_STATE(state)
 #define SET_ERROR_STATE(state) gpio_set_level(CONFIG_LED_GPIO, !state)
 
+#if 1
 #define ENABLE_DEBUG 1
 #define DEBUG(x, ...)                        \
 	do                                       \
@@ -44,6 +47,9 @@ void platform_set_baud(uint32_t baud);
 		TRIM(out, x);                        \
 		ESP_LOGD("BMP", out, ##__VA_ARGS__); \
 	} while (0)
+#else
+#define DEBUG(x, ...)
+#endif
 
 #include "timing.h"
 #include "driver/gpio.h"
