@@ -193,14 +193,14 @@ static void gdb_wifi_destroy(struct gdb_wifi_instance *instance)
 unsigned char gdb_wifi_if_getchar_to(struct gdb_wifi_instance *instance, int timeout)
 {
 	// Optimization for "MSG_PEEK"
-	if (timeout == 0) {
-		uint8_t tmp;
-		int ret = recv(instance->sock, &tmp, 1, MSG_DONTWAIT);
-		if (ret == 1) {
-			return tmp;
-		}
-		return 0xFF;
-	}
+	// if (timeout == 0) {
+	// 	uint8_t tmp;
+	// 	int ret = recv(instance->sock, &tmp, 1, MSG_DONTWAIT);
+	// 	if (ret == 1) {
+	// 		return tmp;
+	// 	}
+	// 	return 0xFF;
+	// }
 	fd_set fds;
 	struct timeval tv;
 
@@ -210,7 +210,7 @@ unsigned char gdb_wifi_if_getchar_to(struct gdb_wifi_instance *instance, int tim
 	FD_ZERO(&fds);
 	FD_SET(instance->sock, &fds);
 
-	if (select(instance->sock + 1, &fds, NULL, NULL, &tv) > 0) {
+	if (select(instance->sock + 1, &fds, NULL, NULL, (timeout >= 0) ? &tv : NULL) > 0) {
 		char c = gdb_wifi_if_getchar(instance);
 		return c;
 	}

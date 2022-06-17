@@ -48,9 +48,10 @@
 #include "lwip/tcp.h"
 
 #include "esp32/rom/ets_sys.h"
-#include "esp_wifi.h"
-#include "esp_event.h"
+#include "esp_ota_ops.h"
 #include "esp_log.h"
+#include "esp_event.h"
+#include "esp_wifi.h"
 #include "nvs_flash.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
@@ -242,10 +243,13 @@ void app_main(void)
 
 	xTaskCreate(&gdb_net_task, "gdb_net", 8192, NULL, 1, NULL);
 
-#if !defined(CONFIG_TARGET_UART_NONE)
-#endif
-
 	ota_tftp_init_server(69, 4);
 
 	ESP_LOGI(__func__, "Free heap %d", esp_get_free_heap_size());
+
+	// Wait two seconds for the system to stabilize before confirming the
+	// new firmware image works. This gives us time to ensure the new
+	// environment works well.
+	vTaskDelay(pdMS_TO_TICKS(2000));
+	esp_ota_mark_app_valid_cancel_rollback();
 }

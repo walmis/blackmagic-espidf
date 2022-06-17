@@ -47,6 +47,8 @@ static xQueueHandle uart_event_queue;
 #define UART_RECALCULATE_BAUD 0x1000
 #define UART_TERMINATE 0x1001
 
+int swo_active = 0;
+
 static esp_err_t uart_reset_rx_fifo(uart_port_t uart_num)
 {
 	//Due to hardware issue, we can not use fifo_rst to reset uart fifo.
@@ -258,6 +260,7 @@ char *serial_no_read(char *s)
 
 void traceswo_deinit(void)
 {
+	swo_active = 0;
 	if (rx_pid) {
 		uart_event_t msg;
 		msg.type = UART_TERMINATE;
@@ -279,6 +282,7 @@ void traceswo_init(uint32_t baudrate, uint32_t swo_chan_bitmask)
 		ESP_LOGI(TAG, "traceswo already initialized, reinitializing...");
 		traceswo_baud(baudrate);
 	}
+	swo_active = 1;
 }
 
 void traceswo_baud(unsigned int baud)

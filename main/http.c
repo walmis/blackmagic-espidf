@@ -1,6 +1,5 @@
 #include <string.h>
 #include <stdio.h>
-#define ICACHE_FLASH_ATTR
 // typedef uint8_t uint8;
 
 #include <libesphttpd/httpd.h>
@@ -22,15 +21,25 @@
 #include "hashmap.h"
 #include "wifi.h"
 
+#include "esp_attr.h"
+#include "esp_ota_ops.h"
+#include "esp_partition.h"
+
+// #ifdef ICACHE_FLASH_ATTR
+// #undef ICACHE_FLASH_ATTR
+// #endif
+// #define ICACHE_FLASH_ATTR IRAM_ATTR
+
 extern const uint8_t frogfs_bin[];
 extern const size_t frogfs_bin_len;
 extern void platform_set_baud(uint32_t);
 
 static HttpdFreertosInstance instance;
 
+void IRAM_ATTR uart_write_all(const uint8_t *data, int len);
 static void on_term_recv(Websock *ws, char *data, int len, int flags)
 {
-	uart_write_bytes(CONFIG_TARGET_UART_IDX, data, len);
+	uart_write_all((const uint8_t *)data, len);
 }
 
 static void on_term_connect(Websock *ws)
@@ -106,7 +115,7 @@ CgiStatus cgi_baud(HttpdConnData *connData)
 }
 
 extern uint32_t uart_overrun_cnt;
-extern uint32_t uart_errors;
+extern uint32_t uart_frame_error_cnt;
 extern uint32_t uart_queue_full_cnt;
 extern uint32_t uart_rx_count;
 extern uint32_t uart_tx_count;
@@ -146,7 +155,7 @@ static const char *core_str(int core_id)
 static void cgi_status_header(HttpdConnData *connData)
 {
 	int len;
-	char buff[256];
+	char buff[512];
 
 	httpdStartResponse(connData, 200);
 	httpdHeader(connData, "Cache-Control", "no-store, must-revalidate, no-cache, max-age=0");
@@ -160,8 +169,18 @@ static void cgi_status_header(HttpdConnData *connData)
 	uint32_t baud2 = 0;
 	uart_get_baudrate(0, &baud0);
 	uart_get_baudrate(1, &baud1);
-	uart_get_baudrate(2, &baud2);
+	extern int swo_active;
+	if (swo_active) {
+		uart_get_baudrate(2, &baud2);
+	}
 
+	const esp_partition_t *current_partition = esp_ota_get_running_partition();
+	const esp_partition_t *next_partition = esp_ota_get_next_update_partition(current_partition);
+	esp_ota_img_states_t current_partition_state = ESP_OTA_IMG_UNDEFINED;
+	esp_ota_img_states_t next_partition_state = ESP_OTA_IMG_UNDEFINED;
+	extern uint32_t uart_rx_data_relay;
+	esp_ota_get_state_partition(current_partition, &current_partition_state);
+	esp_ota_get_state_partition(next_partition, &next_partition_state);
 	len = snprintf(buff, sizeof(buff) - 1,
 		       "free_heap: %u,\n"
 		       "uptime: %d ms\n"
@@ -169,13 +188,18 @@ static void cgi_status_header(HttpdConnData *connData)
 		       "target_baud_rate: %d,\n"
 		       "swo_baud_rate: %d,\n"
 		       "uart_overruns: %d\n"
-		       "uart_errors: %d\n"
-		       "uart_rx_full_cnt: %d\n"
+		       "uart_frame_errors: %d\n"
+		       "uart_queue_full_cnt: %d\n"
 		       "uart_rx_count: %d\n"
 		       "uart_tx_count: %d\n"
+			   "uart_rx_data_relay: %d\n"
+		       "current partition: 0x%08x %d\n"
+		       "next partition: 0x%08x %d\n"
 		       "tasks:\n",
 		       esp_get_free_heap_size(), xTaskGetTickCount() * portTICK_PERIOD_MS, baud0, baud1, baud2,
-		       uart_overrun_cnt, uart_errors, uart_queue_full_cnt, uart_rx_count, uart_tx_count);
+		       uart_overrun_cnt, uart_frame_error_cnt, uart_queue_full_cnt, uart_rx_count, uart_tx_count,
+			   uart_rx_data_relay,
+		       current_partition->address, current_partition_state, next_partition->address, next_partition_state);
 	httpdSend(connData, buff, len);
 }
 
@@ -313,12 +337,12 @@ HttpdBuiltInUrl builtInUrls[] = {
 	{ NULL, NULL, NULL, 0 }
 };
 
-void http_term_broadcast_data(uint8_t *data, size_t len)
+void ICACHE_FLASH_ATTR http_term_broadcast_data(uint8_t *data, size_t len)
 {
 	cgiWebsockBroadcast(&instance.httpdInstance, "/terminal", (char *)data, len, WEBSOCK_FLAG_BIN);
 }
 
-void http_debug_putc(char c, int flush)
+void ICACHE_FLASH_ATTR http_debug_putc(char c, int flush)
 {
 	static uint8_t buf[256];
 	static int bufsize = 0;
@@ -331,7 +355,7 @@ void http_debug_putc(char c, int flush)
 	}
 }
 
-#define maxConnections 8
+#define maxConnections 12
 
 void httpd_start()
 {
