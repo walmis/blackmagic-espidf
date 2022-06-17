@@ -163,11 +163,11 @@ static void IRAM_ATTR uhci_isr_default_new(void *param)
 					stash_item.buf = (uint8_t *)p_obj->rx_cur->buf;
 					stash_item.size = p_obj->rx_cur->length;
 					xQueueSendFromISR(p_obj->stash_Queue, (void *)&stash_item, &HPTaskAwoken);
-					event.type = UHCI_EVENT_BUF_FULL;
-					p_obj->rx_head = p_obj->rx_cur;
-					int front = (p_obj->rx_head - &(p_obj->rx_dma[0]) + DMA_RX_DESC_CNT - 1) %
-						    DMA_RX_DESC_CNT;
-					p_obj->rx_real = &(p_obj->rx_dma[front]);
+					// event.type = UHCI_EVENT_BUF_FULL;
+					// p_obj->rx_head = p_obj->rx_cur;
+					// int front = (p_obj->rx_head - &(p_obj->rx_dma[0]) + DMA_RX_DESC_CNT - 1) %
+					// 	    DMA_RX_DESC_CNT;
+					// p_obj->rx_real = &(p_obj->rx_dma[front]);
 					// p_obj->rx_real->empty = 0;
 				} else {
 					p_obj->buffered_len += p_obj->rx_cur->length;
