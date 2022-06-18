@@ -24,6 +24,7 @@
 #include "esp_attr.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
+#include "hal/interrupt_controller_hal.h"
 
 // #ifdef ICACHE_FLASH_ATTR
 // #undef ICACHE_FLASH_ATTR
@@ -127,12 +128,14 @@ extern uint32_t uart_queue_full_cnt;
 extern uint32_t uart_rx_count;
 extern uint32_t uart_tx_count;
 
+#if CONFIG_FREERTOS_USE_TRACE_FACILITY
 static int task_status_cmp(const void *a, const void *b)
 {
 	TaskStatus_t *ta = (TaskStatus_t *)a;
 	TaskStatus_t *tb = (TaskStatus_t *)b;
 	return ta->xTaskNumber - tb->xTaskNumber;
 }
+#endif
 
 static const char *const task_state_name[] = {
 	"eRunning", /* A task is querying the state of itself, so must be running. */
@@ -143,6 +146,7 @@ static const char *const task_state_name[] = {
 	"eInvalid"  /* Used as an 'invalid state' value. */
 };
 
+#if CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID
 static const char *core_str(int core_id)
 {
 	switch (core_id) {
@@ -158,6 +162,7 @@ static const char *core_str(int core_id)
 		return "???";
 	}
 }
+#endif
 
 static void cgi_status_header(HttpdConnData *connData)
 {
@@ -214,7 +219,8 @@ struct cgi_status_state {
 	TaskStatus_t *pxTaskStatusArray;
 	int i;
 	int uxArraySize;
-	uint32_t total_runtime;
+	bool printInterrupts;
+	uint32_t totalRuntime;
 };
 
 CgiStatus cgi_status(HttpdConnData *connData)
@@ -237,24 +243,49 @@ CgiStatus cgi_status(HttpdConnData *connData)
 			return HTTPD_CGI_DONE;
 		}
 
+#if CONFIG_FREERTOS_USE_TRACE_FACILITY
 		int uxArraySize = uxTaskGetNumberOfTasks();
 		state->pxTaskStatusArray = malloc(uxArraySize * sizeof(TaskStatus_t));
-		state->uxArraySize = uxTaskGetSystemState(state->pxTaskStatusArray, uxArraySize, &state->total_runtime);
+		state->uxArraySize = uxTaskGetSystemState(state->pxTaskStatusArray, uxArraySize, &state->totalRuntime);
+		qsort(state->pxTaskStatusArray, state->uxArraySize, sizeof(TaskStatus_t), task_status_cmp);
+#else
+		state->pxTaskStatusArray = NULL;
+		state->uxArraySize = 0;
+#endif
 		state->i = 0;
 
 		uint32_t tmp;
-		static uint32_t last_total_runtime;
+		static uint32_t lastTotalRuntime;
 		/* Generate the (binary) data. */
-		tmp = state->total_runtime;
-		state->total_runtime = state->total_runtime - last_total_runtime;
-		last_total_runtime = tmp;
-		state->total_runtime /= 100;
-		if (state->total_runtime == 0)
-			state->total_runtime = 1;
-
-		qsort(state->pxTaskStatusArray, state->uxArraySize, sizeof(TaskStatus_t), task_status_cmp);
+		tmp = state->totalRuntime;
+		state->totalRuntime = state->totalRuntime - lastTotalRuntime;
+		lastTotalRuntime = tmp;
+		state->totalRuntime /= 100;
+		if (state->totalRuntime == 0)
+			state->totalRuntime = 1;
 
 		connData->cgiData = state;
+		state->printInterrupts = true;
+		return HTTPD_CGI_MORE;
+	}
+
+	if (state->printInterrupts) {
+		char buff[512];
+		int len = 0;
+
+		int cpu = 0;
+		int irq;
+		for (cpu = 0; cpu < portNUM_PROCESSORS; cpu++) {
+			len += snprintf(buff + len, sizeof(buff) - len, "CPU %d:", cpu);
+			for (irq = 0; irq < 32; irq++) {
+				len += snprintf(buff + len, sizeof(buff) - len, " %d",
+						interrupt_controller_hal_has_handler(irq, cpu));
+			}
+			len += snprintf(buff + len, sizeof(buff) - len, "\n");
+		}
+
+		httpdSend(connData, buff, len);
+		state->printInterrupts = false;
 		return HTTPD_CGI_MORE;
 	}
 
@@ -269,19 +300,26 @@ CgiStatus cgi_status(HttpdConnData *connData)
 		tsk->ulRunTimeCounter -= last_task_time;
 
 		len = snprintf(buff, sizeof(buff),
-			       "\tid: %3u, name: %16s, prio: %3u, state: %10s, stack_hwm: %5u, core: %3s, cpu: "
-			       "%3d%%, pc: 0x%08x\n",
+			       "\tid: %3u, name: %16s, prio: %3u, state: %10s, stack_hwm: %5u, "
+#if CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID
+			       "core: %3s, "
+#endif
+			       "cpu: %3d%%, pc: 0x%08x\n",
 			       tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority,
 			       task_state_name[tsk->eCurrentState], tsk->usStackHighWaterMark,
-			       core_str((int)tsk->xCoreID), tsk->ulRunTimeCounter / state->total_runtime,
-			       (*((uint32_t **)tsk->xHandle))[1]);
+#if CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID
+			       core_str((int)tsk->xCoreID),
+#endif
+			       tsk->ulRunTimeCounter / state->totalRuntime, (*((uint32_t **)tsk->xHandle))[1]);
 
 		httpdSend(connData, buff, len);
 		state->i++;
 		return HTTPD_CGI_MORE;
 	}
 
-	free(state->pxTaskStatusArray);
+	if (state->pxTaskStatusArray != NULL) {
+		free(state->pxTaskStatusArray);
+	}
 	free(state);
 	connData->cgiData = NULL;
 
