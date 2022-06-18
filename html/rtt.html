@@ -1,0 +1,173 @@
+<!doctype html>
+<html>
+
+<head>
+  <link rel="stylesheet" href="xterm.css" />
+  <script src="xterm.js"></script>
+  <script src="xterm-addon-fit.js"></script>
+</head>
+<style>
+  body {
+    font-family: sans;
+  }
+</style>
+
+<body>
+  <div id="terminal" style="height: 90vh"></div>
+  <input type="text" id="line" style="width: 50%"></input>
+
+  <select id="eol">
+    <option value="cr">CR</option>
+    <option value="lf">LF</option>
+    <option value="crlf">CR/LF</option>
+    <option value="none">None</option>
+    <option value="hex">Hex</option>
+  </select>
+
+
+  <button id="sendbtn" type="button">SEND</button>
+  <button id="sendbrk" type="button">BRK</button>
+  <input type="checkbox" id="echo" checked>Echo</input>
+  <button type="button" id="setbaud">SET BAUD</button>
+  <button type="button" id="clear">CLEAR</button>
+  <br>
+  Baud: <span id="curbaud">-</span>
+
+  <script>
+    var line_items = [];
+    var idx = -1;
+
+    function parseHexString(str) {
+      str = str.replace("0x", "")
+      str = str.replace(" ", "")
+
+      var result = [];
+      // Ignore any trailing single digit; I don't know what your needs
+      // are for this case, so you may want to throw an error or convert
+      // the lone digit depending on your needs.
+      while (str.length >= 2) {
+        result.push(parseInt(str.substring(0, 2), 16));
+        str = str.substring(2, str.length);
+      }
+
+      return result;
+    }
+
+    let xhr = new XMLHttpRequest();
+
+    // 2. Configure it: GET-request for the URL /article/.../load
+    xhr.open('GET', '/uart/baud');
+    // 3. Send the request over the network
+    xhr.send();
+
+    // 4. This will be called after the response is received
+    xhr.onload = function () {
+      if (xhr.status != 200) { // analyze HTTP status of the response
+        alert(`Error ${xhr.status}: ${xhr.statusText}`); // e.g. 404: Not Found
+      } else { // show the result
+        let d = xhr.response
+        d = JSON.parse(d)
+        document.querySelector("#curbaud").textContent = d["baudrate"]
+      }
+    };
+
+    function sendLine() {
+      var line = document.querySelector("#line").value
+      var type = document.querySelector("#eol").value
+      var echo = document.querySelector("#echo").checked
+      //console.log(type)
+
+      if (!line_items.includes(line)) {
+        line_items.push(line)
+        idx = line_items.length - 1
+      }
+
+      if (type == "cr") line += "\r"
+      else if (type == "lf") line += "\n"
+      else if (type == "crlf") line += "\r\n"
+      else if (type == "hex") {
+        line = parseHexString(line)
+      }
+      if (echo)
+        term.write(line)
+
+      socket.send(line)
+
+    }
+    document.querySelector("#clear").onclick = event => {
+      term.clear();
+    }
+    document.querySelector("#sendbtn").onclick = event => {
+      sendLine();
+    }
+    document.querySelector("#line").addEventListener("keydown", event => {
+      //console.log(event.key)
+      if (event.key == "ArrowUp") {
+        console.log(idx)
+        if (line_items.length - 1 == idx) idx--;
+
+        event.srcElement.value = line_items[idx]
+        if (idx > 0) idx--;
+
+      }
+      if (event.key == "ArrowDown") {
+        console.log(idx)
+
+        if (idx < line_items.length - 1) {
+          idx++;
+        }
+        event.srcElement.value = line_items[idx]
+      }
+
+      if (event.key !== "Enter") return;
+
+      sendLine();
+
+      event.preventDefault(); // No need to `return false;`.
+    });
+
+    var term = new Terminal({ cursorBlink: true, convertEol: true });
+    var fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    var socket;
+
+    function createSocket() {
+      socket = new WebSocket("ws://" + window.location.host + "/rtt");
+      socket.binaryType = 'arraybuffer';
+      socket.onopen = function (e) {
+        term.write("\x1B[1;3;31m[RTT] Connection established\x1B[0m\r\n");
+      };
+
+      socket.onmessage = function (event) {
+        term.write(new Uint8Array(event.data));
+      };
+
+      socket.onclose = function (event) {
+        if (event.wasClean) {
+          term.write("[RTT] Connection closed");
+        } else {
+          // e.g. server process killed or network down
+          // event.code is usually 1006 in this case
+          term.write("[RTT] Connection died");
+        }
+        createSocket();
+      };
+    }
+
+    createSocket();
+
+    term.open(document.getElementById('terminal'));
+
+    term.onData(chunk => {
+      socket.send(chunk)
+    })
+    fitAddon.activate(term)
+    fitAddon.fit()
+    term.focus()
+
+    window.addEventListener('resize', () => { fitAddon.fit() });
+
+  </script>
+</body>
+
+</html>

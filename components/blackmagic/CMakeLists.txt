@@ -22,5 +22,5 @@ idf_component_register(
     PRIV_INCLUDE_DIRS "../../main"
                       "../../main/include"
 )
-add_definitions(-DPROBE_HOST=esp32 -DPC_HOSTED=0 -DNO_LIBOPENCM3=1)
+add_definitions(-DPROBE_HOST=esp32 -DPC_HOSTED=0 -DNO_LIBOPENCM3=1 -DENABLE_RTT)
 component_compile_options(-Wno-error=char-subscripts -Wno-char-subscripts)

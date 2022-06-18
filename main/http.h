@@ -11,6 +11,7 @@
 /* send data to connected terminal websockets */
 void http_term_broadcast_data(uint8_t *data, size_t len);
 void http_debug_putc(char c, int flush);
+void http_term_broadcast_rtt(char *data, size_t len);
 
 /* start the http server */
 void httpd_start();

@@ -36,7 +36,19 @@ extern void platform_set_baud(uint32_t);
 
 static HttpdFreertosInstance instance;
 
-void IRAM_ATTR uart_write_all(const uint8_t *data, int len);
+void uart_write_all(const uint8_t *data, int len);
+void rtt_append_data(const char *data, int len);
+
+static void on_rtt_recv(Websock *ws, char *data, int len, int flags)
+{
+	rtt_append_data(data, len);
+}
+
+static void on_rtt_connect(Websock *ws)
+{
+	ws->recvCb = on_rtt_recv;
+}
+
 static void on_term_recv(Websock *ws, char *data, int len, int flags)
 {
 	uart_write_all((const uint8_t *)data, len);
@@ -45,26 +57,21 @@ static void on_term_recv(Websock *ws, char *data, int len, int flags)
 static void on_term_connect(Websock *ws)
 {
 	ws->recvCb = on_term_recv;
-
-	// cgiWebsocketSend(ws, "Hi, Websocket!", 14, WEBSOCK_FLAG_NONE);
 }
+
 static void on_debug_recv(Websock *ws, char *data, int len, int flags)
 {
 }
+
 static void on_debug_connect(Websock *ws)
 {
 	ws->recvCb = on_debug_recv;
-
-	// cgiWebsocketSend(&instance.httpdInstance, ws, "Debug connected\r\n", 17, WEBSOCK_FLAG_NONE);
 }
 
 void uart_send_break();
 
 CgiStatus cgi_uart_break(HttpdConnData *connData)
 {
-	// int len;
-	// char buff[64];
-
 	if (connData->isConnectionClosed) {
 		// Connection aborted. Clean up.
 		return HTTPD_CGI_DONE;
@@ -192,14 +199,14 @@ static void cgi_status_header(HttpdConnData *connData)
 		       "uart_queue_full_cnt: %d\n"
 		       "uart_rx_count: %d\n"
 		       "uart_tx_count: %d\n"
-			   "uart_rx_data_relay: %d\n"
+		       "uart_rx_data_relay: %d\n"
 		       "current partition: 0x%08x %d\n"
 		       "next partition: 0x%08x %d\n"
 		       "tasks:\n",
 		       esp_get_free_heap_size(), xTaskGetTickCount() * portTICK_PERIOD_MS, baud0, baud1, baud2,
 		       uart_overrun_cnt, uart_frame_error_cnt, uart_queue_full_cnt, uart_rx_count, uart_tx_count,
-			   uart_rx_data_relay,
-		       current_partition->address, current_partition_state, next_partition->address, next_partition_state);
+		       uart_rx_data_relay, current_partition->address, current_partition_state, next_partition->address,
+		       next_partition_state);
 	httpdSend(connData, buff, len);
 }
 
@@ -321,6 +328,7 @@ HttpdBuiltInUrl builtInUrls[] = {
 	//
 	{ "/terminal", cgiWebsocket, (const void *)on_term_connect, 0 },
 	{ "/debugws", cgiWebsocket, (const void *)on_debug_connect, 0 },
+	{ "/rtt", cgiWebsocket, (const void *)on_rtt_connect, 0 },
 
 	// Wifi Manager
 	{ "/ap.json", cgiApJson, 0, 0 },
@@ -340,6 +348,11 @@ HttpdBuiltInUrl builtInUrls[] = {
 void ICACHE_FLASH_ATTR http_term_broadcast_data(uint8_t *data, size_t len)
 {
 	cgiWebsockBroadcast(&instance.httpdInstance, "/terminal", (char *)data, len, WEBSOCK_FLAG_BIN);
+}
+
+void ICACHE_FLASH_ATTR http_term_broadcast_rtt(char *data, size_t len)
+{
+	cgiWebsockBroadcast(&instance.httpdInstance, "/rtt", data, len, WEBSOCK_FLAG_BIN);
 }
 
 void ICACHE_FLASH_ATTR http_debug_putc(char c, int flush)

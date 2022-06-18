@@ -5,7 +5,7 @@
 COMPONENT_ADD_INCLUDEDIRS := . blackmagic/src/target blackmagic/src blackmagic/src/include blackmagic/src/platforms/common
 
 COMPONENT_SRCDIRS := blackmagic/src/target blackmagic/src blackmagic/src/platforms/common .
-CFLAGS += -Wno-error=char-subscripts -Wno-char-subscripts -DPROBE_HOST=esp32
+CFLAGS += -Wno-error=char-subscripts -Wno-char-subscripts -DPROBE_HOST=esp32 -DENABLE_RTT
 
 COMPONENT_OBJEXCLUDE := blackmagic/src/platforms/common/cdcacm.o \
 						blackmagic/src/platforms/common/swdptap.o \
