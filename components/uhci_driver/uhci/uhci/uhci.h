@@ -44,7 +44,7 @@ typedef struct {
 
 int uart_dma_read(int uhci_num, uint8_t *addr, size_t read_size, TickType_t ticks_to_wait);
 
-int uart_dma_write(int uhci_num, uint8_t *pbuf, size_t wr);
+int uart_dma_write(int uhci_num, const uint8_t *pbuf, size_t wr);
 
 esp_err_t uhci_driver_install(int uhci_num, size_t tx_buf_size, size_t rx_buf_size, int intr_flag,
 			      QueueHandle_t *uart_queue, int queue_cnt);

@@ -115,6 +115,9 @@ void uart_dbg_install(void)
 
 void IRAM_ATTR uart_write_all(const uint8_t *data, int len)
 {
+#ifdef UART_USE_DMA_WRITE
+	uart_dma_write(UHCI_INDEX, data, len);
+#else
 	while (len > 0) {
 		while (!uart_ll_is_tx_idle(&TARGET_UART_DEV)) {
 		}
@@ -126,7 +129,9 @@ void IRAM_ATTR uart_write_all(const uint8_t *data, int len)
 		if (fill_len > 0) {
 			uart_ll_write_txfifo(&TARGET_UART_DEV, data, fill_len);
 		}
+		data += fill_len;
 	}
+#endif
 }
 
 static void IRAM_ATTR net_uart_task(void *params)
@@ -136,6 +141,7 @@ static void IRAM_ATTR net_uart_task(void *params)
 	tcp_client_sock = 0;
 
 	int ret;
+	uint8_t buf[1024];
 
 	struct sockaddr_in saddr;
 	saddr.sin_addr.s_addr = 0;
@@ -191,7 +197,6 @@ static void IRAM_ATTR net_uart_task(void *params)
 						   sizeof(opt));
 				}
 			}
-			uint8_t buf[128];
 
 			if (FD_ISSET(udp_serv_sock, &fds)) {
 				socklen_t slen = sizeof(udp_peer_addr);
@@ -317,7 +322,7 @@ void uart_init(void)
 
 	// Start UART tasks
 	xTaskCreatePinnedToCore(uart_rx_task, "uart_rx_task", 4096, NULL, 1, NULL, 1);
-	xTaskCreate(net_uart_task, "net_uart_task", TCP_MSS + 4096, NULL, 1, NULL);
+	xTaskCreate(net_uart_task, "net_uart_task", 6 * 1024, NULL, 1, NULL);
 
 #endif
 }

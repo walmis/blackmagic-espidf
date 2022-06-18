@@ -302,11 +302,11 @@ exit:
 	return (read_size - rd_rem);
 }
 
-int uart_dma_write(int uhci_num, uint8_t *pbuf, size_t wr)
+int uart_dma_write(int uhci_num, const uint8_t *pbuf, size_t wr)
 {
 	size_t size_rem = wr;
 	size_t size_tmp = 0;
-	uint8_t *pr = pbuf;
+	const uint8_t *pr = pbuf;
 	xSemaphoreTake(uhci_obj[uhci_num]->tx_mux, (portTickType)0);
 	while (size_rem) {
 		size_tmp = size_rem > DMA_TX_BUF_SIZE ? DMA_TX_BUF_SIZE : size_rem;
@@ -367,7 +367,6 @@ esp_err_t uhci_driver_install(int uhci_num, size_t tx_buf_size, size_t rx_buf_si
 	puhci->tx_ring_buf = xRingbufferCreate(tx_buf_size, RINGBUF_TYPE_BYTEBUF);
 	puhci->tx_idle = true;
 	puhci->rx_cur = &(puhci->rx_dma[0]);
-	// assert(puhci->rx_cur != NULL);
 	puhci->uhci_num = uhci_num;
 	uhci_obj[uhci_num] = puhci;
 	uhci_dam_desc_init(uhci_num);
