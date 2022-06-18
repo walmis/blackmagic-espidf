@@ -1,0 +1,10 @@
+filters:
+    'romfs.paths': discard
+    'romfs.yaml': discard
+    '*.css': uglifycss
+    '*.html': [html-minifier, gzip]
+    '*.js': [babel-convert, uglifyjs, gzip]
+    '*.txt': zeroify
+    '*.woff': uncompressed
+    '*.woff2': uncompressed
+    '*': [cache, gzip]

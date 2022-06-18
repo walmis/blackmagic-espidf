@@ -6,7 +6,7 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(blackmagic)
 
 include(components/frogfs/cmake/functions.cmake)
-target_add_frogfs(blackmagic.elf html NAME frogfs)
+target_add_frogfs(blackmagic.elf html NAME frogfs CONFIG frogfs_config.yaml)
 
 # Fill in variables inside `version.h.in` and generate `version.h`
 cmake_minimum_required(VERSION 3.0.0)
