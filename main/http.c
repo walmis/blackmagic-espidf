@@ -127,6 +127,7 @@ extern uint32_t uart_frame_error_cnt;
 extern uint32_t uart_queue_full_cnt;
 extern uint32_t uart_rx_count;
 extern uint32_t uart_tx_count;
+extern uint32_t uart_irq_count;
 
 #if CONFIG_FREERTOS_USE_TRACE_FACILITY
 static int task_status_cmp(const void *a, const void *b)
@@ -193,6 +194,10 @@ static void cgi_status_header(HttpdConnData *connData)
 	extern uint32_t uart_rx_data_relay;
 	esp_ota_get_state_partition(current_partition, &current_partition_state);
 	esp_ota_get_state_partition(next_partition, &next_partition_state);
+	const char *update_status = "";
+	if (next_partition_state != ESP_OTA_IMG_VALID) {
+		update_status = "UPDATE FAILED\n";
+	}
 	len = snprintf(buff, sizeof(buff) - 1,
 		       "free_heap: %u,\n"
 		       "uptime: %d ms\n"
@@ -204,14 +209,16 @@ static void cgi_status_header(HttpdConnData *connData)
 		       "uart_queue_full_cnt: %d\n"
 		       "uart_rx_count: %d\n"
 		       "uart_tx_count: %d\n"
+		       "uart_irq_count: %d\n"
 		       "uart_rx_data_relay: %d\n"
 		       "current partition: 0x%08x %d\n"
 		       "next partition: 0x%08x %d\n"
+			   "%s"
 		       "tasks:\n",
 		       esp_get_free_heap_size(), xTaskGetTickCount() * portTICK_PERIOD_MS, baud0, baud1, baud2,
-		       uart_overrun_cnt, uart_frame_error_cnt, uart_queue_full_cnt, uart_rx_count, uart_tx_count,
+		       uart_overrun_cnt, uart_frame_error_cnt, uart_queue_full_cnt, uart_rx_count, uart_tx_count, uart_irq_count,
 		       uart_rx_data_relay, current_partition->address, current_partition_state, next_partition->address,
-		       next_partition_state);
+		       next_partition_state, update_status);
 	httpdSend(connData, buff, len);
 }
 
