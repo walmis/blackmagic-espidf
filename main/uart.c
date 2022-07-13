@@ -55,7 +55,7 @@ uint32_t uart_queue_full_cnt;
 uint32_t uart_rx_count;
 uint32_t uart_tx_count;
 
-// static QueueHandle_t uhci_queue;
+static xQueueHandle uart_event_queue;
 
 struct {
 	volatile uint8_t m_get_idx;
@@ -115,28 +115,28 @@ void uart_dbg_install(void)
 	xTaskCreate(&dbg_log_task, "dbg_log_main", 2048, NULL, 4, NULL);
 }
 
-void IRAM_ATTR uart_write_all(const uint8_t *data, int len)
-{
-#ifdef UART_USE_DMA_WRITE
-	uart_dma_write(UHCI_INDEX, data, len);
-#else
-	while (len > 0) {
-		while (!uart_ll_is_tx_idle(&TARGET_UART_DEV)) {
-		}
-		uint16_t fill_len = uart_ll_get_txfifo_len(&TARGET_UART_DEV);
-		if (fill_len > len) {
-			fill_len = len;
-		}
-		len -= fill_len;
-		if (fill_len > 0) {
-			uart_ll_write_txfifo(&TARGET_UART_DEV, data, fill_len);
-		}
-		data += fill_len;
-	}
-#endif
-}
+// void IRAM_ATTR uart_write_all(const uint8_t *data, int len)
+// {
+// #ifdef UART_USE_DMA_WRITE
+// 	uart_dma_write(UHCI_INDEX, data, len);
+// #else
+// 	while (len > 0) {
+// 		while (!uart_ll_is_tx_idle(&TARGET_UART_DEV)) {
+// 		}
+// 		uint16_t fill_len = uart_ll_get_txfifo_len(&TARGET_UART_DEV);
+// 		if (fill_len > len) {
+// 			fill_len = len;
+// 		}
+// 		len -= fill_len;
+// 		if (fill_len > 0) {
+// 			uart_ll_write_txfifo(&TARGET_UART_DEV, data, fill_len);
+// 		}
+// 		data += fill_len;
+// 	}
+// #endif
+// }
 
-static void IRAM_ATTR net_uart_task(void *params)
+static void net_uart_task(void *params)
 {
 	tcp_serv_sock = socket(AF_INET, SOCK_STREAM, 0);
 	udp_serv_sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -171,7 +171,6 @@ static void IRAM_ATTR net_uart_task(void *params)
 			FD_SET(tcp_client_sock, &fds);
 
 		int maxfd = MAX(tcp_serv_sock, MAX(udp_serv_sock, tcp_client_sock));
-		// int maxfd = MAX(tcp_serv_sock, udp_serv_sock);
 
 		if ((ret = select(maxfd + 1, &fds, NULL, NULL, &tv) > 0)) {
 			if (FD_ISSET(tcp_serv_sock, &fds)) {
@@ -194,7 +193,7 @@ static void IRAM_ATTR net_uart_task(void *params)
 					opt = 3; /* TCP_KEEPCNT */
 					setsockopt(tcp_client_sock, IPPROTO_TCP, TCP_KEEPCNT, (void *)&opt,
 						   sizeof(opt));
-					opt = 0;
+					opt = 1;
 					setsockopt(tcp_client_sock, IPPROTO_TCP, TCP_NODELAY, (void *)&opt,
 						   sizeof(opt));
 				}
@@ -205,7 +204,7 @@ static void IRAM_ATTR net_uart_task(void *params)
 				ret = recvfrom(udp_serv_sock, buf, sizeof(buf), 0, (struct sockaddr *)&udp_peer_addr,
 					       &slen);
 				if (ret > 0) {
-					uart_write_all((const uint8_t *)buf, ret);
+					uart_write_bytes(CONFIG_TARGET_UART_IDX, (const char *)buf, ret);
 					uart_tx_count += ret;
 				} else {
 					ESP_LOGE(__func__, "udp recvfrom() failed");
@@ -215,7 +214,7 @@ static void IRAM_ATTR net_uart_task(void *params)
 			if (tcp_client_sock && FD_ISSET(tcp_client_sock, &fds)) {
 				ret = recv(tcp_client_sock, buf, sizeof(buf), MSG_DONTWAIT);
 				if (ret > 0) {
-					uart_write_all((const uint8_t *)buf, ret);
+					uart_write_bytes(CONFIG_TARGET_UART_IDX, (const char *)buf, ret);
 					uart_tx_count += ret;
 				} else {
 					ESP_LOGE(__func__, "tcp client recv() failed (%s)", strerror(errno));
@@ -227,14 +226,8 @@ static void IRAM_ATTR net_uart_task(void *params)
 	}
 }
 
-static void IRAM_ATTR uart_rx_task(void *parameters)
-{
-	(void)parameters;
-	uint8_t buf[1024];
-	int ret;
-	int count;
+static void uart_config(void) {
 	extern nvs_handle h_nvs_conf;
-
 	uint32_t baud = 115200;
 	nvs_get_u32(h_nvs_conf, "uartbaud", &baud);
 
@@ -247,54 +240,71 @@ static void IRAM_ATTR uart_rx_task(void *parameters)
 		.rx_flow_ctrl_thresh = 120,
 		.use_ref_tick = 0,
 	};
+	ESP_ERROR_CHECK(uart_driver_install(CONFIG_TARGET_UART_IDX, 4096, 256, 16, &uart_event_queue, 0));
+	ESP_ERROR_CHECK(uart_param_config(CONFIG_TARGET_UART_IDX, &uart_config));
 	ESP_ERROR_CHECK(uart_set_pin(CONFIG_TARGET_UART_IDX, CONFIG_UART_TX_GPIO, CONFIG_UART_RX_GPIO,
 				     UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
+	const uart_intr_config_t uart_intr = {
+		.intr_enable_mask = UART_RXFIFO_FULL_INT_ENA_M | UART_RXFIFO_TOUT_INT_ENA_M | UART_FRM_ERR_INT_ENA_M |
+				    UART_RXFIFO_OVF_INT_ENA_M,
+		.rxfifo_full_thresh = 80,
+		.rx_timeout_thresh = 2,
+		.txfifo_empty_intr_thresh = 10,
+	};
+
+	ESP_ERROR_CHECK(uart_intr_config(CONFIG_TARGET_UART_IDX, &uart_intr));
+	uart_set_baudrate(CONFIG_TARGET_UART_IDX, baud);
+}
+
+static void IRAM_ATTR uart_rx_task(void *parameters)
+{
+	(void)parameters;
+	uint8_t buf[1024];
+	int ret;
+	int count = 0;
+
 	// Install the driver while running on Core 1 in order to ensure the UART DMA interrupt
 	// runs on Core 1.
-	ESP_ERROR_CHECK(
-	    uhci_driver_install(UHCI_INDEX, 128, 16384, ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_LEVEL1, NULL, 0));
-	ESP_ERROR_CHECK(uhci_attach_uart_port(UHCI_INDEX, CONFIG_TARGET_UART_IDX, &uart_config));
+	uart_config();
 
 	while (1) {
-		count = uart_dma_read(UHCI_INDEX, buf, sizeof(buf), portMAX_DELAY);
-		if (count <= 0) {
-			continue;
-		}
-		if (count > sizeof(buf)) {
-			ESP_LOGE(__func__, "count is %d, which is larger than buf size %d", count, sizeof(buf));
-			assert(count <= sizeof(buf));
-		}
-		uart_rx_count += count;
+		uart_event_t evt;
 
-		// Broadcast the new buffer to all connected websocket clients
-		http_term_broadcast_data(buf, count);
-
-		// If there's a TCP client connected, send data there
-		if (tcp_client_sock) {
-			// ESP_LOGI(__func__, "tcp sending %d bytes (first byte: %02x (%c))", count, buf[0], buf[0]);
-			ret = send(tcp_client_sock, buf, count, 0);
-			if (ret > 0) {
-				uart_rx_data_relay += ret;
+		if (xQueueReceive(uart_event_queue, (void *)&evt, portMAX_DELAY)) {
+			if (evt.type == UART_FIFO_OVF) {
+				uart_overrun_cnt++;
+			} else if (evt.type == UART_FRAME_ERR) {
+				uart_frame_error_cnt++;
+			} else if (evt.type == UART_BUFFER_FULL) {
+				uart_queue_full_cnt++;
 			}
-			// ESP_LOGI(__func__, "done sending, return value: %d, running count: %d bytes", ret,
-			// 	 bytes_written);
-			if (ret < 0) {
-				ESP_LOGE(__func__, "tcp send() failed (%s)", strerror(errno));
-				close(tcp_client_sock);
-				tcp_client_sock = 0;
-			} else if (ret != count) {
-				ESP_LOGE(__func__, "tcp send() wanted to send %d bytes, but only sent %d", count, ret);
-			}
-		}
 
-		// If there's a UDP client connected, broadcast to that host
-		if (udp_peer_addr.sin_addr.s_addr) {
-			ret = sendto(udp_serv_sock, buf, count, MSG_DONTWAIT, (struct sockaddr *)&udp_peer_addr,
-				     sizeof(udp_peer_addr));
-			if (ret < 0) {
-				ESP_LOGE(__func__, "udp send() failed (%s)", strerror(errno));
-				udp_peer_addr.sin_addr.s_addr = 0;
+			count = uart_read_bytes(CONFIG_TARGET_UART_IDX, &buf, sizeof(buf), 0);
+			if (count <= 0) {
+				// ESP_LOGE(__func__, "uart gave us 0 bytes");
+				continue;
+			}
+
+			uart_rx_count += count;
+			http_term_broadcast_data(buf, count);
+
+			if (tcp_client_sock) {
+				ret = send(tcp_client_sock, buf, count, 0);
+				if (ret < 0) {
+					ESP_LOGE(__func__, "tcp send() failed (%s)", strerror(errno));
+					close(tcp_client_sock);
+					tcp_client_sock = 0;
+				}
+			}
+
+			if (udp_peer_addr.sin_addr.s_addr) {
+				ret = sendto(udp_serv_sock, buf, count, MSG_DONTWAIT, (struct sockaddr *)&udp_peer_addr,
+					     sizeof(udp_peer_addr));
+				if (ret < 0) {
+					ESP_LOGE(__func__, "udp send() failed (%s)", strerror(errno));
+					udp_peer_addr.sin_addr.s_addr = 0;
+				}
 			}
 		}
 	}
@@ -308,9 +318,7 @@ void uart_send_break(void)
 	uart_get_baudrate(CONFIG_TARGET_UART_IDX, &baud);    // save current baudrate
 	uart_set_baudrate(CONFIG_TARGET_UART_IDX, baud / 2); // set half the baudrate
 	const uint8_t b = 0x00;
-	uart_write_all(&b, 1);
-	while (!uart_ll_is_tx_idle(&TARGET_UART_DEV)) {
-	}
+	uart_write_bytes(CONFIG_TARGET_UART_IDX, &b, 1);
 	uart_wait_tx_done(CONFIG_TARGET_UART_IDX, 10);
 	uart_set_baudrate(CONFIG_TARGET_UART_IDX, baud); // restore baudrate
 }
@@ -323,6 +331,5 @@ void uart_init(void)
 	// Start UART tasks
 	xTaskCreatePinnedToCore(uart_rx_task, "uart_rx_task", 4096, NULL, 1, NULL, 1);
 	xTaskCreate(net_uart_task, "net_uart_task", 6 * 1024, NULL, 1, NULL);
-
 #endif
 }

@@ -37,7 +37,7 @@ extern void platform_set_baud(uint32_t);
 
 static HttpdFreertosInstance instance;
 
-void uart_write_all(const uint8_t *data, int len);
+// void uart_write_all(const uint8_t *data, int len);
 void rtt_append_data(const char *data, int len);
 
 static void on_rtt_recv(Websock *ws, char *data, int len, int flags)
@@ -52,7 +52,7 @@ static void on_rtt_connect(Websock *ws)
 
 static void on_term_recv(Websock *ws, char *data, int len, int flags)
 {
-	uart_write_all((const uint8_t *)data, len);
+	uart_write_bytes(CONFIG_TARGET_UART_IDX, (const uint8_t *)data, len);
 }
 
 static void on_term_connect(Websock *ws)
