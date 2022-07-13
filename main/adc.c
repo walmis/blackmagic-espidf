@@ -66,7 +66,7 @@ int32_t adc_read_system_voltage(void)
     // Farpatch has a divider that's 82k on top and 20k on the bottom.
     uint32_t adjusted_voltage = (voltage_reading * 51) / 10;
 
-	ESP_LOGI(TAG, "cali data: %d mV, adjusted: %d mV", voltage_reading, adjusted_voltage);
+	ESP_LOGI(TAG, "cal data: %d mV, adjusted: %d mV", voltage_reading, adjusted_voltage);
 
     return adjusted_voltage;
 }

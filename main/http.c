@@ -165,6 +165,8 @@ static const char *core_str(int core_id)
 }
 #endif
 
+int32_t adc_read_system_voltage(void);
+
 static void cgi_status_header(HttpdConnData *connData)
 {
 	int len;
@@ -201,9 +203,10 @@ static void cgi_status_header(HttpdConnData *connData)
 	len = snprintf(buff, sizeof(buff) - 1,
 		       "free_heap: %u,\n"
 		       "uptime: %d ms\n"
-		       "debug_baud_rate: %d,\n"
+		       "debug_baud_rate: %d\n"
 		       "target_baud_rate: %d,\n"
 		       "swo_baud_rate: %d,\n"
+		       "src voltage: %d mV\n"
 		       "uart_overruns: %d\n"
 		       "uart_frame_errors: %d\n"
 		       "uart_queue_full_cnt: %d\n"
@@ -213,12 +216,12 @@ static void cgi_status_header(HttpdConnData *connData)
 		       "uart_rx_data_relay: %d\n"
 		       "current partition: 0x%08x %d\n"
 		       "next partition: 0x%08x %d\n"
-			   "%s"
+		       "%s"
 		       "tasks:\n",
 		       esp_get_free_heap_size(), xTaskGetTickCount() * portTICK_PERIOD_MS, baud0, baud1, baud2,
-		       uart_overrun_cnt, uart_frame_error_cnt, uart_queue_full_cnt, uart_rx_count, uart_tx_count, uart_irq_count,
-		       uart_rx_data_relay, current_partition->address, current_partition_state, next_partition->address,
-		       next_partition_state, update_status);
+		       adc_read_system_voltage(), uart_overrun_cnt, uart_frame_error_cnt, uart_queue_full_cnt,
+		       uart_rx_count, uart_tx_count, uart_irq_count, uart_rx_data_relay, current_partition->address,
+		       current_partition_state, next_partition->address, next_partition_state, update_status);
 	httpdSend(connData, buff, len);
 }
 

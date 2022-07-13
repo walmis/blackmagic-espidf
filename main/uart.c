@@ -48,6 +48,8 @@ static int tcp_client_sock = 0;
 
 // UART statistics counters
 uint32_t uart_overrun_cnt;
+uint32_t uart_irq_count;
+uint32_t uart_rx_data_relay;
 uint32_t uart_frame_error_cnt;
 uint32_t uart_queue_full_cnt;
 uint32_t uart_rx_count;
@@ -225,8 +227,6 @@ static void IRAM_ATTR net_uart_task(void *params)
 	}
 }
 
-uint32_t uart_rx_data_relay;
-
 static void IRAM_ATTR uart_rx_task(void *parameters)
 {
 	(void)parameters;
@@ -267,36 +267,36 @@ static void IRAM_ATTR uart_rx_task(void *parameters)
 		}
 		uart_rx_count += count;
 
-		// // Broadcast the new buffer to all connected websocket clients
-		// http_term_broadcast_data(buf, count);
+		// Broadcast the new buffer to all connected websocket clients
+		http_term_broadcast_data(buf, count);
 
-		// // If there's a TCP client connected, send data there
-		// if (tcp_client_sock) {
-		// 	// ESP_LOGI(__func__, "tcp sending %d bytes (first byte: %02x (%c))", count, buf[0], buf[0]);
-		// 	ret = send(tcp_client_sock, buf, count, 0);
-		// 	if (ret > 0) {
-		// 		uart_rx_data_relay += ret;
-		// 	}
-		// 	// ESP_LOGI(__func__, "done sending, return value: %d, running count: %d bytes", ret,
-		// 	// 	 bytes_written);
-		// 	if (ret < 0) {
-		// 		ESP_LOGE(__func__, "tcp send() failed (%s)", strerror(errno));
-		// 		close(tcp_client_sock);
-		// 		tcp_client_sock = 0;
-		// 	} else if (ret != count) {
-		// 		ESP_LOGE(__func__, "tcp send() wanted to send %d bytes, but only sent %d", count, ret);
-		// 	}
-		// }
+		// If there's a TCP client connected, send data there
+		if (tcp_client_sock) {
+			// ESP_LOGI(__func__, "tcp sending %d bytes (first byte: %02x (%c))", count, buf[0], buf[0]);
+			ret = send(tcp_client_sock, buf, count, 0);
+			if (ret > 0) {
+				uart_rx_data_relay += ret;
+			}
+			// ESP_LOGI(__func__, "done sending, return value: %d, running count: %d bytes", ret,
+			// 	 bytes_written);
+			if (ret < 0) {
+				ESP_LOGE(__func__, "tcp send() failed (%s)", strerror(errno));
+				close(tcp_client_sock);
+				tcp_client_sock = 0;
+			} else if (ret != count) {
+				ESP_LOGE(__func__, "tcp send() wanted to send %d bytes, but only sent %d", count, ret);
+			}
+		}
 
-		// // If there's a UDP client connected, broadcast to that host
-		// if (udp_peer_addr.sin_addr.s_addr) {
-		// 	ret = sendto(udp_serv_sock, buf, count, MSG_DONTWAIT, (struct sockaddr *)&udp_peer_addr,
-		// 		     sizeof(udp_peer_addr));
-		// 	if (ret < 0) {
-		// 		ESP_LOGE(__func__, "udp send() failed (%s)", strerror(errno));
-		// 		udp_peer_addr.sin_addr.s_addr = 0;
-		// 	}
-		// }
+		// If there's a UDP client connected, broadcast to that host
+		if (udp_peer_addr.sin_addr.s_addr) {
+			ret = sendto(udp_serv_sock, buf, count, MSG_DONTWAIT, (struct sockaddr *)&udp_peer_addr,
+				     sizeof(udp_peer_addr));
+			if (ret < 0) {
+				ESP_LOGE(__func__, "udp send() failed (%s)", strerror(errno));
+				udp_peer_addr.sin_addr.s_addr = 0;
+			}
+		}
 	}
 }
 
