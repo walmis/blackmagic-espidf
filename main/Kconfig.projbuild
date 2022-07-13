@@ -36,8 +36,8 @@ menu "Blackmagic Configuration"
         help
         TCK/SWDIO GPIO number		
             
-    config SRST_GPIO
-        int "SRST GPIO"
+    config NRST_GPIO
+        int "NRST GPIO"
         default 12
         help
         Reset GPIO Number

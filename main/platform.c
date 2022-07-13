@@ -113,13 +113,13 @@ void platform_init(void)
 	}
 	{
 		const gpio_config_t gpio_conf = {
-			.pin_bit_mask = BIT64(CONFIG_SRST_GPIO),
+			.pin_bit_mask = BIT64(CONFIG_NRST_GPIO),
 			.mode = GPIO_MODE_OUTPUT,
 			.pull_up_en = 0,
 			.pull_down_en = 0,
 			.intr_type = GPIO_INTR_DISABLE,
 		};
-		gpio_set_level(CONFIG_SRST_GPIO, 1);
+		gpio_set_level(CONFIG_NRST_GPIO, 1);
 		gpio_config(&gpio_conf);
 	}
 }
@@ -129,20 +129,20 @@ void platform_buffer_flush(void)
 	;
 }
 
-void platform_srst_set_val(bool assert)
+void platform_nrst_set_val(bool assert)
 {
 	if (assert) {
-		gpio_set_direction(CONFIG_SRST_GPIO, GPIO_OUTPUT);
-		gpio_set_level(CONFIG_SRST_GPIO, 0);
+		gpio_set_direction(CONFIG_NRST_GPIO, GPIO_OUTPUT);
+		gpio_set_level(CONFIG_NRST_GPIO, 0);
 	} else {
-		gpio_set_level(CONFIG_SRST_GPIO, 1);
-		gpio_set_direction(CONFIG_SRST_GPIO, GPIO_OUTPUT);
+		gpio_set_level(CONFIG_NRST_GPIO, 1);
+		gpio_set_direction(CONFIG_NRST_GPIO, GPIO_OUTPUT);
 	}
 }
 
-bool platform_srst_get_val(void)
+bool platform_nrst_get_val(void)
 {
-	return !gpio_get_level(CONFIG_SRST_GPIO);
+	return !gpio_get_level(CONFIG_NRST_GPIO);
 }
 
 const char *platform_target_voltage(void)
