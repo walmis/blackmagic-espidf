@@ -1,3 +1,3 @@
 #pragma once
 #define FIRMWARE_VERSION "@_build_version@"
-#define BUILD_TIMESTAMP "@_time_stamp@"
+#define BUILD_TIMESTAMP  "@_time_stamp@"

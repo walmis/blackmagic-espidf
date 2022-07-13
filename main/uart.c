@@ -24,17 +24,17 @@
 #include "uart.h"
 
 #if CONFIG_TARGET_UART_IDX == 0
-#define TARGET_UART_DEV UART0
+#define TARGET_UART_DEV    UART0
 #define PERIPH_UART_MODULE PERIPH_UART0_MODULE
-#define PERIPH_UART_IRQ ETS_UART0_INTR_SOURCE
+#define PERIPH_UART_IRQ    ETS_UART0_INTR_SOURCE
 #elif CONFIG_TARGET_UART_IDX == 1
-#define TARGET_UART_DEV UART1
+#define TARGET_UART_DEV    UART1
 #define PERIPH_UART_MODULE PERIPH_UART1_MODULE
-#define PERIPH_UART_IRQ ETS_UART1_INTR_SOURCE
+#define PERIPH_UART_IRQ    ETS_UART1_INTR_SOURCE
 #elif CONFIG_TARGET_UART_IDX == 2
-#define TARGET_UART_DEV UART2
+#define TARGET_UART_DEV    UART2
 #define PERIPH_UART_MODULE PERIPH_UART2_MODULE
-#define PERIPH_UART_IRQ ETS_UART2_INTR_SOURCE
+#define PERIPH_UART_IRQ    ETS_UART2_INTR_SOURCE
 #else
 #error "No target UART defined"
 #endif
@@ -182,27 +182,21 @@ static void net_uart_task(void *params)
 					ESP_LOGI(__func__, "accepted tcp connection");
 
 					int opt = 1; /* SO_KEEPALIVE */
-					setsockopt(tcp_client_sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&opt,
-						   sizeof(opt));
+					setsockopt(tcp_client_sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&opt, sizeof(opt));
 					opt = 3; /* s TCP_KEEPIDLE */
-					setsockopt(tcp_client_sock, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&opt,
-						   sizeof(opt));
+					setsockopt(tcp_client_sock, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&opt, sizeof(opt));
 					opt = 1; /* s TCP_KEEPINTVL */
-					setsockopt(tcp_client_sock, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&opt,
-						   sizeof(opt));
+					setsockopt(tcp_client_sock, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&opt, sizeof(opt));
 					opt = 3; /* TCP_KEEPCNT */
-					setsockopt(tcp_client_sock, IPPROTO_TCP, TCP_KEEPCNT, (void *)&opt,
-						   sizeof(opt));
+					setsockopt(tcp_client_sock, IPPROTO_TCP, TCP_KEEPCNT, (void *)&opt, sizeof(opt));
 					opt = 1;
-					setsockopt(tcp_client_sock, IPPROTO_TCP, TCP_NODELAY, (void *)&opt,
-						   sizeof(opt));
+					setsockopt(tcp_client_sock, IPPROTO_TCP, TCP_NODELAY, (void *)&opt, sizeof(opt));
 				}
 			}
 
 			if (FD_ISSET(udp_serv_sock, &fds)) {
 				socklen_t slen = sizeof(udp_peer_addr);
-				ret = recvfrom(udp_serv_sock, buf, sizeof(buf), 0, (struct sockaddr *)&udp_peer_addr,
-					       &slen);
+				ret = recvfrom(udp_serv_sock, buf, sizeof(buf), 0, (struct sockaddr *)&udp_peer_addr, &slen);
 				if (ret > 0) {
 					uart_write_bytes(CONFIG_TARGET_UART_IDX, (const char *)buf, ret);
 					uart_tx_count += ret;
@@ -226,7 +220,8 @@ static void net_uart_task(void *params)
 	}
 }
 
-static void uart_config(void) {
+static void uart_config(void)
+{
 	extern nvs_handle h_nvs_conf;
 	uint32_t baud = 115200;
 	nvs_get_u32(h_nvs_conf, "uartbaud", &baud);
@@ -242,12 +237,12 @@ static void uart_config(void) {
 	};
 	ESP_ERROR_CHECK(uart_driver_install(CONFIG_TARGET_UART_IDX, 4096, 256, 16, &uart_event_queue, 0));
 	ESP_ERROR_CHECK(uart_param_config(CONFIG_TARGET_UART_IDX, &uart_config));
-	ESP_ERROR_CHECK(uart_set_pin(CONFIG_TARGET_UART_IDX, CONFIG_UART_TX_GPIO, CONFIG_UART_RX_GPIO,
-				     UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+	ESP_ERROR_CHECK(uart_set_pin(
+		CONFIG_TARGET_UART_IDX, CONFIG_UART_TX_GPIO, CONFIG_UART_RX_GPIO, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
 	const uart_intr_config_t uart_intr = {
 		.intr_enable_mask = UART_RXFIFO_FULL_INT_ENA_M | UART_RXFIFO_TOUT_INT_ENA_M | UART_FRM_ERR_INT_ENA_M |
-				    UART_RXFIFO_OVF_INT_ENA_M,
+	                        UART_RXFIFO_OVF_INT_ENA_M,
 		.rxfifo_full_thresh = 80,
 		.rx_timeout_thresh = 2,
 		.txfifo_empty_intr_thresh = 10,
@@ -299,8 +294,8 @@ static void IRAM_ATTR uart_rx_task(void *parameters)
 			}
 
 			if (udp_peer_addr.sin_addr.s_addr) {
-				ret = sendto(udp_serv_sock, buf, count, MSG_DONTWAIT, (struct sockaddr *)&udp_peer_addr,
-					     sizeof(udp_peer_addr));
+				ret = sendto(
+					udp_serv_sock, buf, count, MSG_DONTWAIT, (struct sockaddr *)&udp_peer_addr, sizeof(udp_peer_addr));
 				if (ret < 0) {
 					ESP_LOGE(__func__, "udp send() failed (%s)", strerror(errno));
 					udp_peer_addr.sin_addr.s_addr = 0;

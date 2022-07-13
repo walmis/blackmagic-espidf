@@ -211,8 +211,8 @@ int esp32_spi_init(int swd)
 	// Mux TDO as either a serial port or a SPI port
 	if (swd) {
 	} else {
-        void traceswo_deinit(void);
-        traceswo_deinit();
+		void traceswo_deinit(void);
+		traceswo_deinit();
 		esp32_spi_mux_out(CONFIG_TDO_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spiq_in);
 	}
 
@@ -225,7 +225,7 @@ int esp32_spi_init(int swd)
 		GPIO_HAL_GET_HW(GPIO_PORT_0)->enable_w1tc = (1 << CONFIG_TMS_SWDIO_GPIO);
 
 		esp32_spi_mux_pin(CONFIG_TMS_SWDIO_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spid_out,
-				  spi_periph_signal[BMP_SPI_BUS_ID].spid_in);
+			spi_periph_signal[BMP_SPI_BUS_ID].spid_in);
 	} else {
 		gpio_set_level(CONFIG_TMS_SWDIO_DIR_GPIO, 1);
 		esp32_spi_mux_out(CONFIG_TMS_SWDIO_GPIO, SIG_GPIO_OUT_IDX | (1 << 10));
@@ -233,7 +233,7 @@ int esp32_spi_init(int swd)
 
 	// The clock pin is shared among SWD and JTAG, so define it here
 	esp32_spi_mux_pin(CONFIG_TCK_SWCLK_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spiclk_out,
-			  spi_periph_signal[BMP_SPI_BUS_ID].spiclk_in);
+		spi_periph_signal[BMP_SPI_BUS_ID].spiclk_in);
 
 	// We use neither the `addr` nor the `command` features
 	spi_ll_set_addr_bitlen(bmp_spi_hw, 0);

@@ -201,27 +201,27 @@ static void cgi_status_header(HttpdConnData *connData)
 		update_status = "UPDATE FAILED\n";
 	}
 	len = snprintf(buff, sizeof(buff) - 1,
-		       "free_heap: %u,\n"
-		       "uptime: %d ms\n"
-		       "debug_baud_rate: %d\n"
-		       "target_baud_rate: %d,\n"
-		       "swo_baud_rate: %d,\n"
-		       "src voltage: %d mV\n"
-		       "uart_overruns: %d\n"
-		       "uart_frame_errors: %d\n"
-		       "uart_queue_full_cnt: %d\n"
-		       "uart_rx_count: %d\n"
-		       "uart_tx_count: %d\n"
-		       "uart_irq_count: %d\n"
-		       "uart_rx_data_relay: %d\n"
-		       "current partition: 0x%08x %d\n"
-		       "next partition: 0x%08x %d\n"
-		       "%s"
-		       "tasks:\n",
-		       esp_get_free_heap_size(), xTaskGetTickCount() * portTICK_PERIOD_MS, baud0, baud1, baud2,
-		       adc_read_system_voltage(), uart_overrun_cnt, uart_frame_error_cnt, uart_queue_full_cnt,
-		       uart_rx_count, uart_tx_count, uart_irq_count, uart_rx_data_relay, current_partition->address,
-		       current_partition_state, next_partition->address, next_partition_state, update_status);
+		"free_heap: %u,\n"
+		"uptime: %d ms\n"
+		"debug_baud_rate: %d\n"
+		"target_baud_rate: %d,\n"
+		"swo_baud_rate: %d,\n"
+		"src voltage: %d mV\n"
+		"uart_overruns: %d\n"
+		"uart_frame_errors: %d\n"
+		"uart_queue_full_cnt: %d\n"
+		"uart_rx_count: %d\n"
+		"uart_tx_count: %d\n"
+		"uart_irq_count: %d\n"
+		"uart_rx_data_relay: %d\n"
+		"current partition: 0x%08x %d\n"
+		"next partition: 0x%08x %d\n"
+		"%s"
+		"tasks:\n",
+		esp_get_free_heap_size(), xTaskGetTickCount() * portTICK_PERIOD_MS, baud0, baud1, baud2,
+		adc_read_system_voltage(), uart_overrun_cnt, uart_frame_error_cnt, uart_queue_full_cnt, uart_rx_count,
+		uart_tx_count, uart_irq_count, uart_rx_data_relay, current_partition->address, current_partition_state,
+		next_partition->address, next_partition_state, update_status);
 	httpdSend(connData, buff, len);
 }
 
@@ -288,8 +288,7 @@ CgiStatus cgi_status(HttpdConnData *connData)
 		for (cpu = 0; cpu < portNUM_PROCESSORS; cpu++) {
 			len += snprintf(buff + len, sizeof(buff) - len, "CPU %d:", cpu);
 			for (irq = 0; irq < 32; irq++) {
-				len += snprintf(buff + len, sizeof(buff) - len, " %d",
-						interrupt_controller_hal_has_handler(irq, cpu));
+				len += snprintf(buff + len, sizeof(buff) - len, " %d", interrupt_controller_hal_has_handler(irq, cpu));
 			}
 			len += snprintf(buff + len, sizeof(buff) - len, "\n");
 		}
@@ -310,17 +309,17 @@ CgiStatus cgi_status(HttpdConnData *connData)
 		tsk->ulRunTimeCounter -= last_task_time;
 
 		len = snprintf(buff, sizeof(buff),
-			       "\tid: %3u, name: %16s, prio: %3u, state: %10s, stack_hwm: %5u, "
+			"\tid: %3u, name: %16s, prio: %3u, state: %10s, stack_hwm: %5u, "
 #if CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID
-			       "core: %3s, "
+			"core: %3s, "
 #endif
-			       "cpu: %3d%%, pc: 0x%08x\n",
-			       tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority,
-			       task_state_name[tsk->eCurrentState], tsk->usStackHighWaterMark,
+			"cpu: %3d%%, pc: 0x%08x\n",
+			tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority, task_state_name[tsk->eCurrentState],
+			tsk->usStackHighWaterMark,
 #if CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID
-			       core_str((int)tsk->xCoreID),
+			core_str((int)tsk->xCoreID),
 #endif
-			       tsk->ulRunTimeCounter / state->totalRuntime, (*((uint32_t **)tsk->xHandle))[1]);
+			tsk->ulRunTimeCounter / state->totalRuntime, (*((uint32_t **)tsk->xHandle))[1]);
 
 		httpdSend(connData, buff, len);
 		state->i++;
@@ -338,26 +337,25 @@ CgiStatus cgi_status(HttpdConnData *connData)
 	return HTTPD_CGI_DONE;
 }
 
-#define FLASH_SIZE 2
+#define FLASH_SIZE              2
 #define LIBESPHTTPD_OTA_TAGNAME "blackmagic"
 
-CgiUploadFlashDef uploadParams = { .type = CGIFLASH_TYPE_FW,
-				   .fw1Pos = 0x2000,
-				   .fw2Pos = ((FLASH_SIZE * 1024 * 1024)) + 0x2000,
-				   .fwSize = ((FLASH_SIZE * 1024 * 1024)) - 0x2000,
-				   .tagName = LIBESPHTTPD_OTA_TAGNAME };
+CgiUploadFlashDef uploadParams = {.type = CGIFLASH_TYPE_FW,
+	.fw1Pos = 0x2000,
+	.fw2Pos = ((FLASH_SIZE * 1024 * 1024)) + 0x2000,
+	.fwSize = ((FLASH_SIZE * 1024 * 1024)) - 0x2000,
+	.tagName = LIBESPHTTPD_OTA_TAGNAME};
 
 HttpdBuiltInUrl builtInUrls[] = {
 	//  {"*", cgiRedirectApClientToHostname, "esp8266.nonet"},
-	{ "/", cgiRedirect, (const void *)"/index.html", 0 },
+	{"/", cgiRedirect, (const void *)"/index.html", 0},
 	//  {"/led.tpl", cgifrogfsTemplate, tplLed},
 	//  {"/index.tpl", cgifrogfsTemplate, tplCounter},
 	//  {"/led.cgi", cgiLed, NULL},
-	{ "/flash/", cgiRedirect, (const void *)"/flash/index.html", 0 },
-	{ "/flash", cgiRedirect, (const void *)"/flash/index.html", 0 },
-	{ "/flash/next", cgiGetFirmwareNext, &uploadParams, 0 },
-	{ "/flash/upload", cgiUploadFirmware, &uploadParams, 0 },
-	{ "/flash/reboot", cgiRebootFirmware, NULL, 0 },
+	{"/flash/", cgiRedirect, (const void *)"/flash/index.html", 0},
+	{"/flash", cgiRedirect, (const void *)"/flash/index.html", 0},
+	{"/flash/next", cgiGetFirmwareNext, &uploadParams, 0}, {"/flash/upload", cgiUploadFirmware, &uploadParams, 0},
+	{"/flash/reboot", cgiRebootFirmware, NULL, 0},
 
 	//  //Routines to make the /wifi URL and everything beneath it work.
 	//
@@ -370,18 +368,14 @@ HttpdBuiltInUrl builtInUrls[] = {
 	//  {"/wifi/wifi.tpl", cgifrogfsTemplate, tplWlan},
 	//  {"/wifi/connect.cgi", cgiWiFiConnect, NULL},
 	//  {"/wifi/connstatus.cgi", cgiWiFiConnStatus, NULL},
-	{ "/uart/baud", cgi_baud, NULL, 0 },
-	{ "/uart/break", cgi_uart_break, NULL, 0 },
-	{ "/status", cgi_status, NULL, 0 },
+	{"/uart/baud", cgi_baud, NULL, 0}, {"/uart/break", cgi_uart_break, NULL, 0}, {"/status", cgi_status, NULL, 0},
 	//
-	{ "/terminal", cgiWebsocket, (const void *)on_term_connect, 0 },
-	{ "/debugws", cgiWebsocket, (const void *)on_debug_connect, 0 },
-	{ "/rtt", cgiWebsocket, (const void *)on_rtt_connect, 0 },
+	{"/terminal", cgiWebsocket, (const void *)on_term_connect, 0},
+	{"/debugws", cgiWebsocket, (const void *)on_debug_connect, 0},
+	{"/rtt", cgiWebsocket, (const void *)on_rtt_connect, 0},
 
 	// Wifi Manager
-	{ "/ap.json", cgiApJson, 0, 0 },
-	{ "/connect.json", cgiConnectJson, 0, 0 },
-	{ "/status.json", cgiStatusJson, 0, 0 },
+	{"/ap.json", cgiApJson, 0, 0}, {"/connect.json", cgiConnectJson, 0, 0}, {"/status.json", cgiStatusJson, 0, 0},
 
 	//  {"/websocket/echo.cgi", cgiWebsocket, myEchoWebsocketConnect},
 	//
@@ -389,9 +383,8 @@ HttpdBuiltInUrl builtInUrls[] = {
 	//  {"/test/", cgiRedirect, "/test/index.html"},
 	//  {"/test/test.cgi", cgiTestbed, NULL},
 
-	{ "*", cgiFrogFsHook, NULL, 0 }, // Catch-all cgi function for the filesystem
-	{ NULL, NULL, NULL, 0 }
-};
+	{"*", cgiFrogFsHook, NULL, 0}, // Catch-all cgi function for the filesystem
+	{NULL, NULL, NULL, 0}};
 
 void ICACHE_FLASH_ATTR http_term_broadcast_data(uint8_t *data, size_t len)
 {

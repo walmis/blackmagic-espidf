@@ -45,7 +45,7 @@ static volatile bool should_exit_calibration;
 static xQueueHandle uart_event_queue;
 
 #define UART_RECALCULATE_BAUD 0x1000
-#define UART_TERMINATE 0x1001
+#define UART_TERMINATE        0x1001
 
 int swo_active = 0;
 
@@ -56,7 +56,7 @@ static esp_err_t uart_reset_rx_fifo(uart_port_t uart_num)
 
 	// we read the data out and make `fifo_len == 0 && rd_addr == wr_addr`.
 	while (UART_LL_GET_HW(uart_num)->status.rxfifo_cnt != 0 ||
-	       (UART_LL_GET_HW(uart_num)->mem_rx_status.wr_addr != UART_LL_GET_HW(uart_num)->mem_rx_status.rd_addr)) {
+		   (UART_LL_GET_HW(uart_num)->mem_rx_status.wr_addr != UART_LL_GET_HW(uart_num)->mem_rx_status.rd_addr)) {
 		READ_PERI_REG(UART_FIFO_REG(uart_num));
 	}
 	return ESP_OK;
@@ -129,8 +129,8 @@ static void swo_uart_rx_task(void *arg)
 		baud_rate = 115200;
 	}
 
-	ret = uart_set_pin(CONFIG_TRACE_SWO_UART_IDX, UART_PIN_NO_CHANGE, CONFIG_TDO_GPIO, UART_PIN_NO_CHANGE,
-			   UART_PIN_NO_CHANGE);
+	ret = uart_set_pin(
+		CONFIG_TRACE_SWO_UART_IDX, UART_PIN_NO_CHANGE, CONFIG_TDO_GPIO, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 	if (ret != ESP_OK) {
 		ESP_LOGE(TAG, "unable to configure SWO UART pin: %s", esp_err_to_name(ret));
 		goto out;
@@ -157,7 +157,7 @@ static void swo_uart_rx_task(void *arg)
 
 	const uart_intr_config_t uart_intr = {
 		.intr_enable_mask = UART_RXFIFO_FULL_INT_ENA_M | UART_RXFIFO_TOUT_INT_ENA_M | UART_FRM_ERR_INT_ENA_M |
-				    UART_RXFIFO_OVF_INT_ENA_M,
+	                        UART_RXFIFO_OVF_INT_ENA_M,
 		.rxfifo_full_thresh = 80,
 		.rx_timeout_thresh = 2,
 		.txfifo_empty_intr_thresh = 10,
@@ -196,8 +196,8 @@ static void swo_uart_rx_task(void *arg)
 			}
 
 			if (baud_rate == -1 || evt.type == UART_RECALCULATE_BAUD) {
-				esp_err_t ret = uart_set_pin(CONFIG_TRACE_SWO_UART_IDX, UART_PIN_NO_CHANGE,
-							     CONFIG_TDO_GPIO, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+				esp_err_t ret = uart_set_pin(CONFIG_TRACE_SWO_UART_IDX, UART_PIN_NO_CHANGE, CONFIG_TDO_GPIO,
+					UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 				if (ret != ESP_OK) {
 					ESP_LOGE(TAG, "unable to configure SWO UART pin: %s", esp_err_to_name(ret));
 					goto out;
@@ -230,8 +230,8 @@ static void swo_uart_rx_task(void *arg)
 				bufpos = 0;
 			} // if(bufpos)
 		} else if (baud_rate == -1) {
-			esp_err_t ret = uart_set_pin(CONFIG_TRACE_SWO_UART_IDX, UART_PIN_NO_CHANGE, CONFIG_TDO_GPIO,
-						     UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+			esp_err_t ret = uart_set_pin(
+				CONFIG_TRACE_SWO_UART_IDX, UART_PIN_NO_CHANGE, CONFIG_TDO_GPIO, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 			if (ret != ESP_OK) {
 				ESP_LOGE(TAG, "unable to configure SWO UART pin: %s", esp_err_to_name(ret));
 				goto out;
@@ -276,8 +276,8 @@ void traceswo_init(uint32_t baudrate, uint32_t swo_chan_bitmask)
 	if (!rx_pid) {
 		ESP_LOGI(TAG, "initializing traceswo");
 		// xTaskCreate(swo_uart_rx_task, "swo_rx_task", 2048, (void *)baudrate, 10, &rx_pid);
-		xTaskCreatePinnedToCore(swo_uart_rx_task, (const char *)"swo_rx_task", 2048, (void *)baudrate, 10,
-					&rx_pid, tskNO_AFFINITY);
+		xTaskCreatePinnedToCore(
+			swo_uart_rx_task, (const char *)"swo_rx_task", 2048, (void *)baudrate, 10, &rx_pid, tskNO_AFFINITY);
 	} else {
 		ESP_LOGI(TAG, "traceswo already initialized, reinitializing...");
 		traceswo_baud(baudrate);

@@ -100,8 +100,8 @@ static bool IRAM_ATTR perform_wifi_reset(void *user_ctx)
 	// return whether we need to yield at the end of ISR
 	return high_task_awoken == pdTRUE;
 }
-#define TIMER_DIVIDER (16)			     //  Hardware timer clock divider
-#define TIMER_SCALE (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
+#define TIMER_DIVIDER (16)                             //  Hardware timer clock divider
+#define TIMER_SCALE   (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
 
 static bool timer_initialized = false;
 static void IRAM_ATTR handle_wifi_reset(void *parameter)

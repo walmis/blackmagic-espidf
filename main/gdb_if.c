@@ -139,7 +139,7 @@ static void gdb_wifi_task(void *arg)
 	vTaskSetThreadLocalStoragePointer(NULL, GDB_TLS_INDEX, tls); // used for exception handling
 
 	ESP_LOGI("GDB_client", "Started task %d this:%p tlsp:%p mowner:%p", instance->sock, instance, tls,
-		 xQueueGetMutexHolder(gdb_mutex));
+		xQueueGetMutexHolder(gdb_mutex));
 
 	int opt = 1;
 	setsockopt(instance->sock, IPPROTO_TCP, TCP_NODELAY, (void *)&opt, sizeof(opt));
@@ -157,8 +157,7 @@ static void gdb_wifi_task(void *arg)
 
 	while (true) {
 		struct exception e;
-		TRY_CATCH(e, EXCEPTION_ALL)
-		{
+		TRY_CATCH (e, EXCEPTION_ALL) {
 			gdb_main_loop(&gdb_controller, false);
 		}
 		if (e.type) {

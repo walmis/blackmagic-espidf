@@ -47,26 +47,26 @@ inline static u8_t netbuf_read_u8(struct netbuf *netbuf, u16_t offs)
 }
 
 #define TFTP_FIRMWARE_FILE "firmware.bin"
-#define TFTP_OCTET_MODE "octet" /* non-case-sensitive */
+#define TFTP_OCTET_MODE    "octet" /* non-case-sensitive */
 
-#define TFTP_OP_RRQ 1
-#define TFTP_OP_WRQ 2
-#define TFTP_OP_DATA 3
-#define TFTP_OP_ACK 4
+#define TFTP_OP_RRQ   1
+#define TFTP_OP_WRQ   2
+#define TFTP_OP_DATA  3
+#define TFTP_OP_ACK   4
 #define TFTP_OP_ERROR 5
-#define TFTP_OP_OACK 6
+#define TFTP_OP_OACK  6
 
 #define TFTP_ERR_FILENOTFOUND 1
-#define TFTP_ERR_FULL 3
-#define TFTP_ERR_ILLEGAL 4
-#define TFTP_ERR_BADID 5
+#define TFTP_ERR_FULL         3
+#define TFTP_ERR_ILLEGAL      4
+#define TFTP_ERR_BADID        5
 
 #define MAX_IMAGE_SIZE 0x100000 /*1MB images max at the moment */
 
 static void tftp_task(void *port_p);
 static char *tftp_get_field(int field, struct netbuf *netbuf);
-static err_t tftp_receive_data(struct netconn *nc, size_t *received_len, ip_addr_t *peer_addr, int peer_port,
-			       tftp_receive_cb receive_cb);
+static err_t tftp_receive_data(
+	struct netconn *nc, size_t *received_len, ip_addr_t *peer_addr, int peer_port, tftp_receive_cb receive_cb);
 static err_t tftp_send_ack(struct netconn *nc, int block);
 static err_t tftp_send_rrq(struct netconn *nc, const char *filename);
 static void tftp_send_error(struct netconn *nc, int err_code, const char *err_msg);
@@ -89,18 +89,18 @@ static int ota_tftp_init()
 	running_part = esp_ota_get_running_partition();
 	if (!configured_part || !running_part) {
 		ESP_LOGE(TAG, "configured or running parititon is null, is OTA support enabled in build "
-			      "configuration?");
+					  "configuration?");
 		return ERR_VAL;
 	}
 
 	if (configured_part != running_part) {
 		ESP_LOGW(TAG, "Configured OTA boot partition at offset 0x%08x, but running from offset 0x%08x",
-			 configured_part->address, running_part->address);
+			configured_part->address, running_part->address);
 		ESP_LOGW(TAG, "(This can happen if either the OTA boot data or preferred boot image become corrupted "
-			      "somehow.)");
+					  "somehow.)");
 	}
 	ESP_LOGI(TAG, "Running partition type %d subtype %d (offset 0x%08x)", running_part->type, running_part->subtype,
-		 running_part->address);
+		running_part->address);
 
 	update_part = esp_ota_get_next_update_partition(NULL);
 
@@ -119,8 +119,8 @@ static int ota_tftp_init()
 	return ERR_OK;
 }
 
-err_t ota_tftp_download(const char *server, int port, const char *filename, int timeout, int ota_slot,
-			tftp_receive_cb receive_cb)
+err_t ota_tftp_download(
+	const char *server, int port, const char *filename, int timeout, int ota_slot, tftp_receive_cb receive_cb)
 {
 	err_t err;
 
@@ -299,8 +299,8 @@ static char *tftp_get_field(int field, struct netbuf *netbuf)
 
 #define TFTP_TIMEOUT_RETRANSMITS 10
 
-static err_t tftp_receive_data(struct netconn *nc, size_t *received_len, ip_addr_t *peer_addr, int peer_port,
-			       tftp_receive_cb receive_cb)
+static err_t tftp_receive_data(
+	struct netconn *nc, size_t *received_len, ip_addr_t *peer_addr, int peer_port, tftp_receive_cb receive_cb)
 {
 	*received_len = 0;
 	const int DATA_PACKET_SZ = 512 + 4; /*( packet size plus header */
@@ -379,7 +379,7 @@ static err_t tftp_receive_data(struct netconn *nc, size_t *received_len, ip_addr
 			uint32_t *chunk;
 			netbuf_data(netbuf, (void **)&chunk, &chunk_len);
 			if (first_chunk) {
-				chunk++;	/* skip the 4 byte TFTP header */
+				chunk++;        /* skip the 4 byte TFTP header */
 				chunk_len -= 4; /* assuming this netbuf chunk is at least 4 bytes! */
 				first_chunk = false;
 			}

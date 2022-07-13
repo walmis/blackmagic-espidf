@@ -61,15 +61,14 @@ struct exception {
 extern struct exception **get_innermost_exception();
 #define innermost_exception (*get_innermost_exception())
 
-#define TRY_CATCH(e, type_mask) \
-	(e).type = 0; \
-	(e).mask = (type_mask); \
-	(e).outer = innermost_exception; \
+#define TRY_CATCH(e, type_mask)                     \
+	(e).type = 0;                                   \
+	(e).mask = (type_mask);                         \
+	(e).outer = innermost_exception;                \
 	innermost_exception = (struct exception *)&(e); \
-	if (setjmp(innermost_exception->jmpbuf) == 0) \
-		for (;innermost_exception == &(e); innermost_exception = (e).outer)
+	if (setjmp(innermost_exception->jmpbuf) == 0)   \
+		for (; innermost_exception == &(e); innermost_exception = (e).outer)
 
 void raise_exception(uint32_t type, const char *msg);
 
 #endif
-

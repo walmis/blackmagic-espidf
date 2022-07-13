@@ -32,4 +32,3 @@ unsigned char gdb_if_getchar_to(int timeout);
 void gdb_if_putchar(unsigned char c, int flush);
 
 #endif
-

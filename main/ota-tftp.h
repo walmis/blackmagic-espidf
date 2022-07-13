@@ -51,8 +51,8 @@ void ota_tftp_init_server(int listen_port, int prio);
    receive_cb: called repeatedly after each successful packet that
    has been written to flash and ACKed.  Can pass NULL to omit.
  */
-err_t ota_tftp_download(const char *server, int port, const char *filename,
-                        int timeout, int ota_slot, tftp_receive_cb receive_cb);
+err_t ota_tftp_download(
+	const char *server, int port, const char *filename, int timeout, int ota_slot, tftp_receive_cb receive_cb);
 
 #define TFTP_PORT 69
 
