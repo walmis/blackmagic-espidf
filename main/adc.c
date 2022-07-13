@@ -59,14 +59,14 @@ int32_t adc_read_system_voltage(void)
 	}
 
 	adc_reading = adc1_get_raw(ADC_CHANNEL);
-	ESP_LOGI(TAG, "raw  data: %d", adc_reading);
+	ESP_LOGD(TAG, "raw  data: %d", adc_reading);
 
 	uint32_t voltage_reading = esp_adc_cal_raw_to_voltage(adc_reading, &adc_characteristics);
 
     // Farpatch has a divider that's 82k on top and 20k on the bottom.
     uint32_t adjusted_voltage = (voltage_reading * 51) / 10;
 
-	ESP_LOGI(TAG, "cal data: %d mV, adjusted: %d mV", voltage_reading, adjusted_voltage);
+	ESP_LOGD(TAG, "cal data: %d mV, adjusted: %d mV", voltage_reading, adjusted_voltage);
 
     return adjusted_voltage;
 }
