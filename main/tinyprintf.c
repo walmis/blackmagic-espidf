@@ -371,10 +371,15 @@ void tfp_format(void *putp, putcf putf, const char *fmt, va_list va)
 				p.alt = 1;
 #if defined(SIZEOF_INT) && SIZEOF_POINTER <= SIZEOF_INT
 				lng = 0;
+#ifdef __GNUC__
+				__attribute__((fallthrough));
+#endif
 #elif defined(SIZEOF_LONG) && SIZEOF_POINTER <= SIZEOF_LONG
 				lng = 1;
+				// fall through
 #elif defined(SIZEOF_LONG_LONG) && SIZEOF_POINTER <= SIZEOF_LONG_LONG
 				lng = 2;
+				// fall through
 #endif
 #endif
 			case 'x':

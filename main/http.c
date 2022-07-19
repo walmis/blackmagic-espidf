@@ -2,105 +2,57 @@
 #include <stdio.h>
 // typedef uint8_t uint8;
 
-#include <libesphttpd/httpd.h>
-#include <libesphttpd/cgiwifi.h>
-#include <libesphttpd/cgiflash.h>
-#include <libesphttpd/auth.h>
-#include <libesphttpd/captdns.h>
-#include <libesphttpd/cgiwebsocket.h>
-#include <libesphttpd/httpd-frogfs.h>
-#include <libesphttpd/httpd-freertos.h>
-#include <libesphttpd/cgiredirect.h>
 #include "frogfs/frogfs.h"
-#include "driver/uart.h"
+#include <esp_http_server.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/semphr.h>
 #include <freertos/queue.h>
+#include <freertos/list.h>
 #include "platform.h"
 #include "hashmap.h"
+#include "websocket.h"
 #include "wifi.h"
+#include "driver/uart.h"
 
 #include "esp_attr.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "hal/interrupt_controller_hal.h"
 
-// #ifdef ICACHE_FLASH_ATTR
-// #undef ICACHE_FLASH_ATTR
-// #endif
-// #define ICACHE_FLASH_ATTR IRAM_ATTR
+const static char http_cache_control_hdr[] = "Cache-Control";
+const static char http_cache_control_no_cache[] = "no-store, no-cache, must-revalidate, max-age=0";
+// const static char http_cache_control_cache[] = "public, max-age=31536000";
+const static char http_pragma_hdr[] = "Pragma";
+const static char http_pragma_no_cache[] = "no-cache";
 
 extern const uint8_t frogfs_bin[];
 extern const size_t frogfs_bin_len;
 extern void platform_set_baud(uint32_t);
+static frogfs_fs_t *frog_fs;
+httpd_handle_t http_daemon;
 
-static HttpdFreertosInstance instance;
+#define TAG "httpd"
 
-// void uart_write_all(const uint8_t *data, int len);
-void rtt_append_data(const char *data, int len);
-
-static void on_rtt_recv(Websock *ws, char *data, int len, int flags)
+esp_err_t cgi_uart_break(httpd_req_t *req)
 {
-	rtt_append_data(data, len);
-}
-
-static void on_rtt_connect(Websock *ws)
-{
-	ws->recvCb = on_rtt_recv;
-}
-
-static void on_term_recv(Websock *ws, char *data, int len, int flags)
-{
-	uart_write_bytes(CONFIG_TARGET_UART_IDX, (const uint8_t *)data, len);
-}
-
-static void on_term_connect(Websock *ws)
-{
-	ws->recvCb = on_term_recv;
-}
-
-static void on_debug_recv(Websock *ws, char *data, int len, int flags)
-{
-}
-
-static void on_debug_connect(Websock *ws)
-{
-	ws->recvCb = on_debug_recv;
-}
-
-void uart_send_break();
-
-CgiStatus cgi_uart_break(HttpdConnData *connData)
-{
-	if (connData->isConnectionClosed) {
-		// Connection aborted. Clean up.
-		return HTTPD_CGI_DONE;
-	}
-
+	void uart_send_break();
 	uart_send_break();
 
-	httpdStartResponse(connData, 200);
-	httpdHeader(connData, "Content-Type", "text/json");
-	httpdEndHeaders(connData);
+	httpd_resp_set_type(req, "text/json");
+	httpd_resp_send(req, "{}", 2);
 
-	httpdSend(connData, 0, 0);
-
-	return HTTPD_CGI_DONE;
+	return ESP_OK;
 }
 
-CgiStatus cgi_baud(HttpdConnData *connData)
+static esp_err_t cgi_baud(httpd_req_t *req)
 {
 	int len;
-	char buff[64];
+	char buff[12];
+	char querystring[64];
 
-	if (connData->isConnectionClosed) {
-		// Connection aborted. Clean up.
-		return HTTPD_CGI_DONE;
-	}
-
-	len = httpdFindArg(connData->getArgs, "set", buff, sizeof(buff));
-	if (len > 0) {
+	httpd_req_get_url_query_str(req, querystring, sizeof(querystring));
+	if (ESP_OK == httpd_query_key_value(querystring, "set", buff, sizeof(buff))) {
 		int baud = atoi(buff);
 		// printf("baud %d\n", baud);
 		if (baud) {
@@ -112,14 +64,10 @@ CgiStatus cgi_baud(HttpdConnData *connData)
 	uart_get_baudrate(0, &baud);
 
 	len = snprintf(buff, sizeof(buff), "{\"baudrate\": %u }", baud);
+	httpd_resp_set_type(req, "text/json");
+	httpd_resp_send(req, buff, len);
 
-	httpdStartResponse(connData, 200);
-	httpdHeader(connData, "Content-Type", "text/json");
-	httpdEndHeaders(connData);
-
-	httpdSend(connData, buff, len);
-
-	return HTTPD_CGI_DONE;
+	return ESP_OK;
 }
 
 extern uint32_t uart_overrun_cnt;
@@ -128,6 +76,7 @@ extern uint32_t uart_queue_full_cnt;
 extern uint32_t uart_rx_count;
 extern uint32_t uart_tx_count;
 extern uint32_t uart_irq_count;
+extern uint32_t uart_rx_data_relay;
 
 #if CONFIG_FREERTOS_USE_TRACE_FACILITY
 static int task_status_cmp(const void *a, const void *b)
@@ -167,141 +116,151 @@ static const char *core_str(int core_id)
 
 int32_t adc_read_system_voltage(void);
 
-static void cgi_status_header(HttpdConnData *connData)
+static esp_err_t cgi_status_header(httpd_req_t *req)
 {
-	int len;
-	char buff[512];
+	char buffer[256];
 
-	httpdStartResponse(connData, 200);
-	httpdHeader(connData, "Cache-Control", "no-store, must-revalidate, no-cache, max-age=0");
-	httpdHeader(connData, "Content-Type", "text/plain");
-	httpdHeader(connData, "Refresh", "1");
+	uint32_t esp_debug_baud = 0;
+	uint32_t target_baud = 0;
+	uint32_t swo_baud = 0;
+	uart_get_baudrate(0, &esp_debug_baud);
+	uart_get_baudrate(1, &target_baud);
+	// 	extern int swo_active;
+	// 	if (swo_active) {
+	// 		uart_get_baudrate(2, &baud2);
+	// 	}
 
-	httpdEndHeaders(connData);
+	snprintf(buffer, sizeof(buffer),
+		"free_heap: %u\n"
+		"uptime: %d\n",
+		esp_get_free_heap_size(), xTaskGetTickCount() * portTICK_PERIOD_MS);
+	httpd_resp_sendstr_chunk(req, buffer);
 
-	uint32_t baud0 = 0;
-	uint32_t baud1 = 0;
-	uint32_t baud2 = 0;
-	uart_get_baudrate(0, &baud0);
-	uart_get_baudrate(1, &baud1);
-	extern int swo_active;
-	if (swo_active) {
-		uart_get_baudrate(2, &baud2);
-	}
-
-	const esp_partition_t *current_partition = esp_ota_get_running_partition();
-	const esp_partition_t *next_partition = esp_ota_get_next_update_partition(current_partition);
-	esp_ota_img_states_t current_partition_state = ESP_OTA_IMG_UNDEFINED;
-	esp_ota_img_states_t next_partition_state = ESP_OTA_IMG_UNDEFINED;
-	extern uint32_t uart_rx_data_relay;
-	esp_ota_get_state_partition(current_partition, &current_partition_state);
-	esp_ota_get_state_partition(next_partition, &next_partition_state);
-	const char *update_status = "";
-	if (next_partition_state != ESP_OTA_IMG_VALID) {
-		update_status = "UPDATE FAILED\n";
-	}
-	len = snprintf(buff, sizeof(buff) - 1,
-		"free_heap: %u,\n"
-		"uptime: %d ms\n"
+	snprintf(buffer, sizeof(buffer),
 		"debug_baud_rate: %d\n"
-		"target_baud_rate: %d,\n"
-		"swo_baud_rate: %d,\n"
-		"src voltage: %d mV\n"
+		"target_baud_rate: %d\n"
+		"swo_baud_rate: %d\n",
+		esp_debug_baud, target_baud, swo_baud);
+	httpd_resp_sendstr_chunk(req, buffer);
+
+	snprintf(buffer, sizeof(buffer), "target voltage: %d mV\n", adc_read_system_voltage());
+	httpd_resp_sendstr_chunk(req, buffer);
+
+	snprintf(buffer, sizeof(buffer),
 		"uart_overruns: %d\n"
 		"uart_frame_errors: %d\n"
 		"uart_queue_full_cnt: %d\n"
 		"uart_rx_count: %d\n"
 		"uart_tx_count: %d\n"
 		"uart_irq_count: %d\n"
-		"uart_rx_data_relay: %d\n"
+		"uart_rx_data_relay: %d\n",
+		uart_overrun_cnt, uart_frame_error_cnt, uart_queue_full_cnt, uart_rx_count, uart_tx_count, uart_irq_count,
+		uart_rx_data_relay);
+	httpd_resp_sendstr_chunk(req, buffer);
+
+	const esp_partition_t *current_partition = esp_ota_get_running_partition();
+	const esp_partition_t *next_partition = NULL;
+	if (current_partition != NULL) {
+		next_partition = esp_ota_get_next_update_partition(current_partition);
+	}
+	esp_ota_img_states_t current_partition_state = ESP_OTA_IMG_UNDEFINED;
+	esp_ota_img_states_t next_partition_state = ESP_OTA_IMG_UNDEFINED;
+	uint32_t next_partition_address = 0;
+
+	esp_ota_get_state_partition(current_partition, &current_partition_state);
+	// if (ret != ESP_OK) {
+	// 	ESP_LOGE(__func__, "unable to get current partition state: %08x", ret);
+	// }
+
+	esp_ota_get_state_partition(next_partition, &next_partition_state);
+	// if (ret != ESP_OK) {
+	// 	ESP_LOGE(__func__, "unable to get next partition state: %08x", ret);
+	// }
+
+	if (next_partition != NULL) {
+		next_partition_address = next_partition->address;
+	}
+	const char *update_status = "update valid\n";
+	if (next_partition_state != ESP_OTA_IMG_VALID) {
+		update_status = "UPDATE FAILED\n";
+	}
+
+	snprintf(buffer, sizeof(buffer),
 		"current partition: 0x%08x %d\n"
 		"next partition: 0x%08x %d\n"
-		"%s"
-		"tasks:\n",
-		esp_get_free_heap_size(), xTaskGetTickCount() * portTICK_PERIOD_MS, baud0, baud1, baud2,
-		adc_read_system_voltage(), uart_overrun_cnt, uart_frame_error_cnt, uart_queue_full_cnt, uart_rx_count,
-		uart_tx_count, uart_irq_count, uart_rx_data_relay, current_partition->address, current_partition_state,
-		next_partition->address, next_partition_state, update_status);
-	httpdSend(connData, buff, len);
+		"%s",
+		current_partition->address, current_partition_state, next_partition_address, next_partition_state,
+		update_status);
+	httpd_resp_sendstr_chunk(req, buffer);
+
+	httpd_resp_sendstr_chunk(req, "tasks:\n");
+
+	return ESP_OK;
 }
 
-struct cgi_status_state {
+static esp_err_t cgi_status(httpd_req_t *req)
+{
 	TaskStatus_t *pxTaskStatusArray;
 	int i;
 	int uxArraySize;
-	bool printInterrupts;
 	uint32_t totalRuntime;
-};
 
-CgiStatus cgi_status(HttpdConnData *connData)
-{
 	static hashmap *task_times;
 	if (!task_times) {
 		task_times = hashmap_new();
 	}
 
-	if (connData->isConnectionClosed) {
-		// Connection aborted. Clean up.
-		return HTTPD_CGI_DONE;
-	}
+	httpd_resp_set_type(req, "text/plain");
+	httpd_resp_set_hdr(req, http_cache_control_hdr, http_cache_control_no_cache);
+	httpd_resp_set_hdr(req, http_pragma_hdr, http_pragma_no_cache);
+	httpd_resp_set_hdr(req, "Refresh", "1");
 
-	struct cgi_status_state *state = (struct cgi_status_state *)connData->cgiData;
-	if (state == NULL) {
-		cgi_status_header(connData);
-		struct cgi_status_state *state = malloc(sizeof(struct cgi_status_state));
-		if (!state) {
-			return HTTPD_CGI_DONE;
-		}
+	cgi_status_header(req);
 
 #if CONFIG_FREERTOS_USE_TRACE_FACILITY
-		int uxArraySize = uxTaskGetNumberOfTasks();
-		state->pxTaskStatusArray = malloc(uxArraySize * sizeof(TaskStatus_t));
-		state->uxArraySize = uxTaskGetSystemState(state->pxTaskStatusArray, uxArraySize, &state->totalRuntime);
-		qsort(state->pxTaskStatusArray, state->uxArraySize, sizeof(TaskStatus_t), task_status_cmp);
+	uxArraySize = uxTaskGetNumberOfTasks();
+	pxTaskStatusArray = malloc(uxArraySize * sizeof(TaskStatus_t));
+	uxArraySize = uxTaskGetSystemState(pxTaskStatusArray, uxArraySize, &totalRuntime);
+	qsort(pxTaskStatusArray, uxArraySize, sizeof(TaskStatus_t), task_status_cmp);
 #else
-		state->pxTaskStatusArray = NULL;
-		state->uxArraySize = 0;
+	pxTaskStatusArray = NULL;
+	uxArraySize = 0;
 #endif
-		state->i = 0;
+	i = 0;
 
-		uint32_t tmp;
-		static uint32_t lastTotalRuntime;
-		/* Generate the (binary) data. */
-		tmp = state->totalRuntime;
-		state->totalRuntime = state->totalRuntime - lastTotalRuntime;
-		lastTotalRuntime = tmp;
-		state->totalRuntime /= 100;
-		if (state->totalRuntime == 0)
-			state->totalRuntime = 1;
-
-		connData->cgiData = state;
-		state->printInterrupts = true;
-		return HTTPD_CGI_MORE;
+	uint32_t tmp;
+	static uint32_t lastTotalRuntime;
+	/* Generate the (binary) data. */
+	tmp = totalRuntime;
+	totalRuntime = totalRuntime - lastTotalRuntime;
+	lastTotalRuntime = tmp;
+	totalRuntime /= 100;
+	if (totalRuntime == 0) {
+		totalRuntime = 1;
 	}
 
-	if (state->printInterrupts) {
-		char buff[512];
-		int len = 0;
+	// if (1 /*printInterrupts */) {
+	// 	char buff[512];
+	// 	int len = 0;
 
-		int cpu = 0;
-		int irq;
-		for (cpu = 0; cpu < portNUM_PROCESSORS; cpu++) {
-			len += snprintf(buff + len, sizeof(buff) - len, "CPU %d:", cpu);
-			for (irq = 0; irq < 32; irq++) {
-				len += snprintf(buff + len, sizeof(buff) - len, " %d", interrupt_controller_hal_has_handler(irq, cpu));
-			}
-			len += snprintf(buff + len, sizeof(buff) - len, "\n");
-		}
+	// 	int cpu = 0;
+	// 	int irq;
+	// 	for (cpu = 0; cpu < portNUM_PROCESSORS; cpu++) {
+	// 		len += snprintf(buff + len, sizeof(buff) - len, "CPU %d:", cpu);
+	// 		for (irq = 0; irq < 32; irq++) {
+	// 			len += snprintf(buff + len, sizeof(buff) - len, " %d", interrupt_controller_hal_has_handler(irq, cpu));
+	// 		}
+	// 		len += snprintf(buff + len, sizeof(buff) - len, "\n");
+	// 	}
 
-		httpdSend(connData, buff, len);
-		state->printInterrupts = false;
-		return HTTPD_CGI_MORE;
-	}
+	// 	httpd_resp_send_chunk(req, buff, len);
+	// }
 
-	if (state->pxTaskStatusArray != NULL && state->i < state->uxArraySize) {
+	// ESP_LOGI(__func__, "looking through %d tasks", uxArraySize);
+	for (i = 0; (pxTaskStatusArray != NULL) && (i < uxArraySize); i++) {
 		int len;
 		char buff[256];
-		TaskStatus_t *tsk = &state->pxTaskStatusArray[state->i];
+		TaskStatus_t *tsk = &pxTaskStatusArray[i];
 
 		uint32_t last_task_time = tsk->ulRunTimeCounter;
 		hashmap_get(task_times, tsk->xTaskNumber, &last_task_time);
@@ -319,109 +278,253 @@ CgiStatus cgi_status(HttpdConnData *connData)
 #if CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID
 			core_str((int)tsk->xCoreID),
 #endif
-			tsk->ulRunTimeCounter / state->totalRuntime, (*((uint32_t **)tsk->xHandle))[1]);
-
-		httpdSend(connData, buff, len);
-		state->i++;
-		return HTTPD_CGI_MORE;
+			tsk->ulRunTimeCounter / totalRuntime, (*((uint32_t **)tsk->xHandle))[1]);
+		httpd_resp_send_chunk(req, buff, len);
 	}
 
-	if (state->pxTaskStatusArray != NULL) {
-		free(state->pxTaskStatusArray);
+	if (pxTaskStatusArray != NULL) {
+		free(pxTaskStatusArray);
 	}
-	free(state);
-	connData->cgiData = NULL;
 
-	httpdSend(connData, "\n", 1);
-
-	return HTTPD_CGI_DONE;
+	// ESP_LOGI(__func__, "finishing connection");
+	httpd_resp_sendstr_chunk(req, NULL);
+	return ESP_OK;
 }
 
-#define FLASH_SIZE              2
-#define LIBESPHTTPD_OTA_TAGNAME "blackmagic"
+//Use this as a cgi function to redirect one url to another.
+static esp_err_t cgi_redirect(httpd_req_t *req)
+{
+	httpd_resp_set_type(req, "text/html");
+	httpd_resp_set_status(req, "302 Moved");
+	httpd_resp_set_hdr(req, "Location", (const char *)req->user_ctx);
+	httpd_resp_send(req, NULL, 0);
+	return ESP_OK;
+}
 
-CgiUploadFlashDef uploadParams = {.type = CGIFLASH_TYPE_FW,
-	.fw1Pos = 0x2000,
-	.fw2Pos = ((FLASH_SIZE * 1024 * 1024)) + 0x2000,
-	.fwSize = ((FLASH_SIZE * 1024 * 1024)) - 0x2000,
-	.tagName = LIBESPHTTPD_OTA_TAGNAME};
+//Struct to keep extension->mime data in
+typedef struct {
+	const char *ext;
+	const char *mimetype;
+} MimeMap;
 
-HttpdBuiltInUrl builtInUrls[] = {
-	//  {"*", cgiRedirectApClientToHostname, "esp8266.nonet"},
-	{"/", cgiRedirect, (const void *)"/index.html", 0},
-	//  {"/led.tpl", cgifrogfsTemplate, tplLed},
-	//  {"/index.tpl", cgifrogfsTemplate, tplCounter},
-	//  {"/led.cgi", cgiLed, NULL},
-	{"/flash/", cgiRedirect, (const void *)"/flash/index.html", 0},
-	{"/flash", cgiRedirect, (const void *)"/flash/index.html", 0},
-	{"/flash/next", cgiGetFirmwareNext, &uploadParams, 0}, {"/flash/upload", cgiUploadFirmware, &uploadParams, 0},
-	{"/flash/reboot", cgiRebootFirmware, NULL, 0},
+//The mappings from file extensions to mime types. If you need an extra mime type,
+//add it here.
+static const MimeMap mimeTypes[] = {
+	{"htm", "text/html"}, {"html", "text/html"}, {"css", "text/css"}, {"js", "text/javascript"}, {"txt", "text/plain"},
+	{"jpg", "image/jpeg"}, {"jpeg", "image/jpeg"}, {"png", "image/png"}, {"svg", "image/svg+xml"}, {"xml", "text/xml"},
+	{"json", "application/json"}, {NULL, "text/html"}, //default value
+};
 
-	//  //Routines to make the /wifi URL and everything beneath it work.
+//Returns a static char* to a mime type for a given url to a file.
+const char *frogfs_get_mime_type(const char *url)
+{
+	char *urlp = (char *)url;
+	int i = 0;
+	//Go find the extension
+	const char *ext = urlp + (strlen(urlp) - 1);
+	while (ext != urlp && *ext != '.')
+		ext--;
+	if (*ext == '.')
+		ext++;
+
+	while (mimeTypes[i].ext != NULL && strcasecmp(ext, mimeTypes[i].ext) != 0)
+		i++;
+	return mimeTypes[i].mimetype;
+}
+
+static bool frogfs_is_gzip(frogfs_file_t *file)
+{
+	frogfs_stat_t st;
+	frogfs_fstat(file, &st);
+	return (st.flags & FROGFS_FLAG_GZIP) != 0;
+}
+
+static esp_err_t cgi_frog_fs_hook(httpd_req_t *req)
+{
+	char chunk[512];
+	int chunk_bytes;
+
+	ESP_LOGI(__func__, "uri: %s", req->uri);
+	bool is_gzip;
+	frogfs_file_t *file = frogfs_fopen(frog_fs, req->uri);
+	httpd_resp_set_hdr(req, "Connection", "Close");
+
+	if (file != NULL) {
+		httpd_resp_set_type(req, frogfs_get_mime_type(req->uri));
+	} else {
+		size_t uri_len = strlen(req->uri);
+		// If the URI ends in a `/`, don't add an extra one.
+		if (req->uri[uri_len - 1] == '/') {
+			snprintf(chunk, sizeof(chunk) - 1, "%sindex.html", req->uri);
+		} else {
+			snprintf(chunk, sizeof(chunk) - 1, "%s/index.html", req->uri);
+		}
+		file = frogfs_fopen(frog_fs, chunk);
+
+		if (file == NULL) {
+			return httpd_resp_send_404(req);
+		}
+		httpd_resp_set_type(req, frogfs_get_mime_type(chunk));
+	}
+
+	is_gzip = frogfs_is_gzip(file);
+
+	// Check the browser's "Accept-Encoding" header. If the client does not
+	// advertise that he accepts GZIP send a warning message (telnet users for e.g.)
+	{
+		char accept_encoding_buffer[64];
+		bool found = (httpd_req_get_hdr_value_str(
+						  req, "Accept-Encoding", accept_encoding_buffer, sizeof(accept_encoding_buffer)) == ESP_OK);
+		if (!found || (strstr(accept_encoding_buffer, "gzip") == NULL)) {
+			//No Accept-Encoding: gzip header present
+			frogfs_fclose(file);
+			return httpd_resp_send_err(
+				req, HTTPD_501_METHOD_NOT_IMPLEMENTED, "your browser does not support gzip-compressed data");
+		}
+	}
+
+	if (is_gzip) {
+		httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
+	}
+
+	// httpd_resp_send(req, "testing", strlen("testing"));
+
+	while ((chunk_bytes = frogfs_fread(file, chunk, sizeof(chunk))) > 0) {
+		httpd_resp_send_chunk(req, chunk, chunk_bytes);
+	}
+	// Empty chunk closes the connection
+	httpd_resp_sendstr_chunk(req, NULL);
+	frogfs_fclose(file);
+
+	return ESP_OK;
+}
+
+static const httpd_uri_t basic_handlers[] = {
+	{
+		.uri = "/wifi",
+		.method = HTTP_GET,
+		.handler = cgi_redirect,
+		.user_ctx = (void *)"/wifi.html",
+	},
+	// {
+	// 	.uri = "/flash/?",
+	// 	.method = HTTP_GET,
+	// 	.handler = cgi_redirect,
+	// 	.user_ctx = (void *)"/flash/index.html",
+	// },
+	// {"/flash/next", cgiGetFirmwareNext, &uploadParams, 0}, {"/flash/upload", cgiUploadFirmware, &uploadParams, 0},
+	// {"/flash/reboot", cgiRebootFirmware, NULL, 0},
+
+	// Routines to make the /wifi URL and everything beneath it work.
 	//
-	////Enable the line below to protect the WiFi configuration with an username/password combo.
-	////  {"/wifi/*", authBasic, myPassFn},
-	//
-	//  {"/wifi", cgiRedirect, "/wifi/wifi.tpl"},
-	//  {"/wifi/", cgiRedirect, "/wifi/wifi.tpl"},
-	//  {"/wifi/wifiscan.cgi", cgiWiFiScan, NULL},
-	//  {"/wifi/wifi.tpl", cgifrogfsTemplate, tplWlan},
-	//  {"/wifi/connect.cgi", cgiWiFiConnect, NULL},
-	//  {"/wifi/connstatus.cgi", cgiWiFiConnStatus, NULL},
-	{"/uart/baud", cgi_baud, NULL, 0}, {"/uart/break", cgi_uart_break, NULL, 0}, {"/status", cgi_status, NULL, 0},
-	//
-	{"/terminal", cgiWebsocket, (const void *)on_term_connect, 0},
-	{"/debugws", cgiWebsocket, (const void *)on_debug_connect, 0},
-	{"/rtt", cgiWebsocket, (const void *)on_rtt_connect, 0},
+	{
+		.uri = "/uart/baud",
+		.handler = cgi_baud,
+		.method = HTTP_GET,
+	},
+	{
+		.uri = "/uart/break",
+		.handler = cgi_uart_break,
+		.method = HTTP_GET,
+	},
+	{
+		.uri = "/status",
+		.method = HTTP_GET,
+		.handler = cgi_status,
+	},
+	{
+		.uri = "/terminal",
+		.method = HTTP_GET,
+		.handler = cgi_websocket,
+		.user_ctx = (void *)&uart_websocket,
+		.is_websocket = true,
+	},
+	{
+		.uri = "/debugws",
+		.method = HTTP_GET,
+		.handler = cgi_websocket,
+		.user_ctx = (void *)&debug_websocket,
+		.is_websocket = true,
+	},
+	{
+		.uri = "/rtt",
+		.method = HTTP_GET,
+		.handler = cgi_websocket,
+		.user_ctx = (void *)&rtt_websocket,
+		.is_websocket = true,
+	},
 
 	// Wifi Manager
-	{"/ap.json", cgiApJson, 0, 0}, {"/connect.json", cgiConnectJson, 0, 0}, {"/status.json", cgiStatusJson, 0, 0},
+	{
+		.uri = "/ap.json",
+		.handler = cgi_ap_json,
+		.method = HTTP_GET,
+	},
+	{
+		.uri = "/connect.json",
+		.method = HTTP_GET,
+		.handler = cgi_connect_json,
+	},
+	{
+		.uri = "/connect.json",
+		.method = HTTP_POST,
+		.handler = cgi_connect_json,
+	},
+	{
+		.uri = "/connect.json",
+		.method = HTTP_DELETE,
+		.handler = cgi_connect_json,
+	},
+	{
+		.uri = "/status.json",
+		.method = HTTP_GET,
+		.handler = cgi_status_json,
+	},
 
-	//  {"/websocket/echo.cgi", cgiWebsocket, myEchoWebsocketConnect},
-	//
-	//  {"/test", cgiRedirect, "/test/index.html"},
-	//  {"/test/", cgiRedirect, "/test/index.html"},
-	//  {"/test/test.cgi", cgiTestbed, NULL},
+	// Catch-all cgi function for the filesystem
+	{
+		.uri = "*",
+		.handler = cgi_frog_fs_hook,
+		.method = HTTP_GET,
+	},
+};
 
-	{"*", cgiFrogFsHook, NULL, 0}, // Catch-all cgi function for the filesystem
-	{NULL, NULL, NULL, 0}};
+static const int basic_handlers_count = sizeof(basic_handlers) / sizeof(*basic_handlers);
 
-void ICACHE_FLASH_ATTR http_term_broadcast_data(uint8_t *data, size_t len)
+httpd_handle_t webserver_start(void)
 {
-	cgiWebsockBroadcast(&instance.httpdInstance, "/terminal", (char *)data, len, WEBSOCK_FLAG_BIN);
-}
-
-void ICACHE_FLASH_ATTR http_term_broadcast_rtt(char *data, size_t len)
-{
-	cgiWebsockBroadcast(&instance.httpdInstance, "/rtt", data, len, WEBSOCK_FLAG_BIN);
-}
-
-void ICACHE_FLASH_ATTR http_debug_putc(char c, int flush)
-{
-	static uint8_t buf[256];
-	static int bufsize = 0;
-
-	buf[bufsize++] = c;
-	if (flush || (bufsize == sizeof(buf))) {
-		cgiWebsockBroadcast(&instance.httpdInstance, "/debugws", (char *)buf, bufsize, WEBSOCK_FLAG_BIN);
-
-		bufsize = 0;
-	}
-}
-
-#define maxConnections 12
-
-void httpd_start()
-{
+	int i;
 	static frogfs_config_t frogfs_config = {
 		.addr = frogfs_bin,
 	};
-	frogfs_fs_t *fs = frogfs_init(&frogfs_config);
-	assert(fs != NULL);
-	httpdRegisterFrogFs(fs);
+	frog_fs = frogfs_init(&frogfs_config);
+	assert(frog_fs != NULL);
+	httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+	config.max_uri_handlers = basic_handlers_count + 5;
+	config.server_port = 80;
+	config.uri_match_fn = httpd_uri_match_wildcard;
 
-	static char connectionMemory[sizeof(RtosConnType) * maxConnections];
-	httpdFreertosInit(&instance, builtInUrls, 80, connectionMemory, maxConnections, HTTPD_FLAG_NONE);
-	httpdFreertosStart(&instance);
-	// httpdInit(builtInUrls, 80);
+	/* This check should be a part of http_server */
+	config.max_open_sockets = (CONFIG_LWIP_MAX_SOCKETS - 4);
+
+	if (httpd_start(&http_daemon, &config) != ESP_OK) {
+		ESP_LOGE(TAG, "Unable to start HTTP server");
+		return NULL;
+	}
+
+	for (i = 0; i < basic_handlers_count; i++) {
+		httpd_register_uri_handler(http_daemon, &basic_handlers[i]);
+	}
+
+	ESP_LOGI(TAG, "Started HTTP server on port: '%d'", config.server_port);
+	ESP_LOGI(TAG, "Max URI handlers: '%d'", config.max_uri_handlers);
+	ESP_LOGI(TAG, "Max Open Sessions: '%d'", config.max_open_sockets);
+	ESP_LOGI(TAG, "Max Header Length: '%d'", HTTPD_MAX_REQ_HDR_LEN);
+	ESP_LOGI(TAG, "Max URI Length: '%d'", HTTPD_MAX_URI_LEN);
+	ESP_LOGI(TAG, "Max Stack Size: '%d'", config.stack_size);
+
+	return http_daemon;
 }
+
+// It's unclear why this is necessary -- rtt.c doesn't actually work for some reason
+#include "rtt.c"

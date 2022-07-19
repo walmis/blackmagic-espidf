@@ -12,7 +12,7 @@
 
 #define INITIAL_FREQUENCY (20 * 1000 * 1000)
 spi_device_handle_t bmp_spi_handle;
-spi_dev_t *bmp_spi_hw = SPI_LL_GET_HW(BMP_SPI_BUS_ID);
+volatile spi_dev_t *bmp_spi_hw = NULL;
 
 #define TAG "esp32-spi"
 
@@ -29,8 +29,10 @@ int esp32_spi_set_frequency(uint32_t frequency)
 		// We need to add dummy cycles to compensate for timing
 		.no_compensate = 0,
 
-		// 5 MHz
-		.clock_speed_hz = frequency,
+		// Valid values are: 80, 48, and 40 MHz
+		.clk_src_hz = 80 * 1000 * 1000,
+
+		.expected_freq = frequency,
 
 		// 50% duty cycle
 		.duty_cycle = 128,
@@ -90,6 +92,7 @@ void esp32_spi_mux_pin(int pin, int out_signal, int in_signal)
 
 int esp32_spi_init(int swd)
 {
+	bmp_spi_hw = SPI_LL_GET_HW(BMP_SPI_BUS_ID);
 	static bool initialized = false;
 	is_swd = swd;
 

@@ -47,14 +47,14 @@
 #include "lwip/api.h"
 #include "lwip/tcp.h"
 
-#include "esp32/rom/ets_sys.h"
+// #include "esp32/rom/ets_sys.h"
 #include "esp_ota_ops.h"
 #include "esp_log.h"
 #include "esp_event.h"
 #include "esp_wifi.h"
+#include "soc/gpio_sig_map.h"
 #include "nvs_flash.h"
 #include "driver/gpio.h"
-#include "driver/timer.h"
 #include "driver/uart.h"
 
 #include "uart.h"
@@ -65,7 +65,7 @@
 
 #include "ota-tftp.h"
 
-#define TAG "bmp-esp32"
+#define TAG "farpatch"
 
 nvs_handle h_nvs_conf;
 
@@ -88,68 +88,12 @@ uint32_t platform_max_frequency_get(void)
 	return swdptap_get_frequency();
 }
 
-static bool IRAM_ATTR perform_wifi_reset(void *user_ctx)
-{
-	(void)user_ctx;
-	BaseType_t high_task_awoken = pdFALSE;
-
-	if (gpio_get_level(GPIO_NUM_0) == 0) {
-		wifi_manager_send_message_from_isr(WM_ORDER_FORGET_CONFIG, NULL, &high_task_awoken);
-	}
-
-	// return whether we need to yield at the end of ISR
-	return high_task_awoken == pdTRUE;
-}
-#define TIMER_DIVIDER (16)                             //  Hardware timer clock divider
-#define TIMER_SCALE   (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
-
-static bool timer_initialized = false;
-static void IRAM_ATTR handle_wifi_reset(void *parameter)
-{
-	(void)parameter;
-
-	// ESP_LOGI(__func__, "handling button press");
-	int group = TIMER_GROUP_0;
-	int timer = TIMER_0;
-	if (!timer_initialized) {
-		bool auto_reload = false;
-		int timer_interval_sec = 3;
-
-		/* Select and initialize basic parameters of the timer */
-		timer_config_t config = {
-			.divider = TIMER_DIVIDER,
-			.counter_dir = TIMER_COUNT_UP,
-			.counter_en = TIMER_PAUSE,
-			.alarm_en = TIMER_ALARM_EN,
-			.auto_reload = auto_reload,
-		}; // default clock source is APB
-		timer_init(group, timer, &config);
-
-		/* Timer's counter will initially start from value below.
-       Also, if auto_reload is set, this value will be automatically reload on alarm */
-		timer_set_counter_value(group, timer, 0);
-
-		/* Configure the alarm value and the interrupt on alarm. */
-		timer_set_alarm_value(group, timer, timer_interval_sec * TIMER_SCALE);
-		timer_enable_intr(group, timer);
-
-		// example_timer_info_t *timer_info = calloc(1, sizeof(example_timer_info_t));
-		// timer_info->timer_group = group;
-		// timer_info->timer_idx = timer;
-		// timer_info->auto_reload = auto_reload;
-		// timer_info->alarm_interval = timer_interval_sec;
-		timer_isr_callback_add(group, timer, perform_wifi_reset, NULL /*timer_info*/, 0);
-
-		timer_initialized = true;
-	}
-
-	timer_start(group, timer);
-}
-
 void platform_init(void)
 {
 	// Reset Button
 	{
+		void handle_wifi_reset(void *parameter);
+		void setup_wifi_reset(void);
 		const gpio_config_t gpio_conf = {
 			.pin_bit_mask = BIT64(GPIO_NUM_0),
 			.mode = GPIO_MODE_INPUT,
@@ -157,6 +101,7 @@ void platform_init(void)
 			.pull_down_en = 0,
 			.intr_type = GPIO_INTR_NEGEDGE,
 		};
+		setup_wifi_reset();
 		gpio_config(&gpio_conf);
 		gpio_install_isr_service(0);
 		gpio_intr_enable(GPIO_NUM_0);
@@ -282,16 +227,17 @@ extern void gdb_net_task();
 
 void app_main(void)
 {
-	gpio_reset_pin(CONFIG_LED_GPIO);
-	gpio_set_direction(CONFIG_LED_GPIO, GPIO_MODE_OUTPUT);
-	gpio_set_level(CONFIG_LED_GPIO, 1);
-	extern void esp32_spi_mux_out(int pin, int out_signal);
-	esp32_spi_mux_out(CONFIG_LED_GPIO, SIG_GPIO_OUT_IDX | (1 << 10));
+	ESP_LOGI(__func__, "starting farpatch");
+	// gpio_reset_pin(CONFIG_LED_GPIO);
+	// gpio_set_direction(CONFIG_LED_GPIO, GPIO_MODE_OUTPUT);
+	// gpio_set_level(CONFIG_LED_GPIO, 1);
+	// extern void esp32_spi_mux_out(int pin, int out_signal);
+	// esp32_spi_mux_out(CONFIG_LED_GPIO, SIG_GPIO_OUT_IDX | (1 << 10));
 
 #ifdef CONFIG_DEBUG_UART
 	uart_dbg_install();
 #else /* !CONFIG_DEBUG_UART */
-	ESP_LOGI(__func__, "deactivating debug uart");
+	ESP_LOGI(TAG, "deactivating debug uart");
 	esp_log_set_vprintf(vprintf_noop);
 #endif
 
@@ -307,15 +253,20 @@ void app_main(void)
 	bm_update_wifi_ssid();
 	bm_update_wifi_ps();
 
+	ESP_LOGI(TAG, "starting wifi manager");
 	wifi_manager_start();
-	httpd_start();
+	ESP_LOGI(TAG, "starting web server");
 
+	webserver_start();
+
+	ESP_LOGI(TAG, "initializing platform");
 	platform_init();
 
 	uart_init();
 
 	xTaskCreate(&gdb_net_task, "gdb_net", 8192, NULL, 1, NULL);
 
+	ESP_LOGI(TAG, "starting tftp server");
 	ota_tftp_init_server(69, 4);
 
 	ESP_LOGI(__func__, "Free heap %d", esp_get_free_heap_size());

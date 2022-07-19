@@ -31,6 +31,8 @@
 
 #include "esp_log.h"
 #include "esp_attr.h"
+#include "timing.h"
+#include "driver/gpio.h"
 
 void platform_buffer_flush(void);
 void platform_set_baud(uint32_t baud);
@@ -50,11 +52,10 @@ void platform_set_baud(uint32_t baud);
 #define DEBUG(x, ...)
 #endif
 
-#include "timing.h"
-#include "driver/gpio.h"
 
-#define TMS_SET_MODE() \
-	do {               \
+#define TMS_SET_MODE()                                               \
+	do {                                                             \
+		gpio_set_direction(CONFIG_TMS_SWDIO_GPIO, GPIO_MODE_OUTPUT); \
 	} while (0)
 
 // no-connects on ESP-01: 12,13,14,15
@@ -75,15 +76,15 @@ void platform_set_baud(uint32_t baud);
 	do {                               \
 		gpio_set_direction(pin, mode); \
 	} while (0)
-#define gpio_set(port, pin)           \
-	do {                              \
-		GPIO.out_w1ts = (0x1 << pin); \
+#define gpio_set(port, pin)     \
+	do {                        \
+		gpio_set_level(pin, 1); \
 	} while (0)
-#define gpio_clear(port, pin)         \
-	do {                              \
-		GPIO.out_w1tc = (0x1 << pin); \
+#define gpio_clear(port, pin)   \
+	do {                        \
+		gpio_set_level(pin, 0); \
 	} while (0)
-#define gpio_get(port, pin) ((GPIO.in >> pin) & 0x1)
+#define gpio_get(port, pin) gpio_get_level(pin)
 #define gpio_set_val(port, pin, value) \
 	if (value) {                       \
 		gpio_set(port, pin);           \
@@ -105,5 +106,3 @@ void platform_set_baud(uint32_t baud);
 #define PLATFORM_HAS_TRACESWO
 #define NUM_TRACE_PACKETS (128) /* This is an 8K buffer */
 #define TRACESWO_PROTOCOL 2     /* 1 = Manchester, 2 = NRZ / async */
-
-extern uint32_t swd_delay_cnt;

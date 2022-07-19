@@ -31,6 +31,7 @@
 
 #include "esp_log.h"
 
+#include <freertos/FreeRTOS.h>
 #include <freertos/timers.h>
 
 #include "gdb_if.h"
@@ -50,7 +51,7 @@
 
 static int num_clients;
 
-static xSemaphoreHandle gdb_mutex;
+static QueueHandle_t gdb_mutex;
 static int gdb_if_serv;
 static target *cur_target;
 static target *last_target;
@@ -60,7 +61,7 @@ struct gdb_wifi_instance {
 	uint8_t buf[256];
 	int bufsize;
 	bool no_ack_mode;
-	xTaskHandle pid;
+	TaskHandle_t pid;
 };
 
 int gdb_main_loop(struct target_controller *tc, bool in_syscall);
@@ -184,7 +185,7 @@ static void gdb_wifi_destroy(struct gdb_wifi_instance *instance)
 	// gdb_breaklock();
 	close(instance->sock);
 
-	xTaskHandle pid = instance->pid;
+	TaskHandle_t pid = instance->pid;
 	free(instance);
 	vTaskDelete(pid);
 }

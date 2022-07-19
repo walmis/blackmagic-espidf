@@ -27,3 +27,6 @@ else()
 endif()
 string(TIMESTAMP _time_stamp)
 configure_file(${CMAKE_SOURCE_DIR}/main/include/version.h.in ${CMAKE_SOURCE_DIR}/main/include/version.h @ONLY)
+
+set(CMAKE_CXX_FLAGS_RELEASE  "-g -ggdb3")
+set(CMAKE_C_FLAGS_RELEASE  "-g -ggdb3")

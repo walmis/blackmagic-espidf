@@ -22,92 +22,45 @@
 
 #include <stdio.h>
 
-#include "esp32_spi.h"
-
 #include "general.h"
 #include "jtagtap.h"
 #include "gdb_packet.h"
 
-#include "esp_rom_gpio.h"
-#include "hal/gpio_ll.h"
-#include "hal/gpio_hal.h"
-#include "hal/spi_ll.h"
-#include "hal/spi_hal.h"
-#include "driver/gpio.h"
-
-#define TAG_LL "jtag-ll"
-#define TAG    "jtag"
-
-// #define DEBUG_JTAG_TRANSACTIONS
-
-enum jtag_drive_mode {
-	JTAG_DRIVE_TDI = 0,
-	JTAG_DRIVE_TMS = 1,
-	JTAG_DRIVE_UNINIT = 2,
-};
-enum jtag_drive_mode jtag_drive_mode = JTAG_DRIVE_TDI;
-
-// Symbol is globally visible
 jtag_proc_t jtag_proc;
 
-static void jtagtap_reset(void);
-static void jtagtap_tms_seq(uint32_t MS, int ticks);
-void jtagtap_tms_seq_tdi(uint32_t MS, uint32_t tdi, int ticks);
-void jtagtap_tdi_tdo_seq(uint8_t *DO, const uint8_t final_tms, const uint8_t *DI, int ticks);
-static void jtagtap_tdi_seq(const uint8_t final_tms, const uint8_t *DI, int ticks);
-static uint8_t jtagtap_next(uint8_t dTMS, uint8_t dTDI);
-
-static void jtag_drive(enum jtag_drive_mode new_mode)
-{
-	if (jtag_drive_mode == new_mode) {
-		return;
-	}
-
-	if (new_mode == JTAG_DRIVE_TDI) {
-		// TDI = MOSI
-		esp32_spi_mux_out(CONFIG_TDI_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spid_out);
-
-		// Wire up the TMS pin, which is GPIO controlled (mostly)
-		esp32_spi_mux_out(CONFIG_TMS_SWDIO_GPIO, SIG_GPIO_OUT_IDX | (1 << 10));
-	}
-	if (new_mode == JTAG_DRIVE_TMS) {
-		// TMS = MOSI
-		esp32_spi_mux_out(CONFIG_TMS_SWDIO_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spid_out);
-
-		// Wire up the TMS pin, which is GPIO controlled (mostly)
-		esp32_spi_mux_out(CONFIG_TDI_GPIO, SIG_GPIO_OUT_IDX);
-	}
-
-	jtag_drive_mode = new_mode;
-}
+static IRAM_ATTR void jtagtap_reset(void);
+static IRAM_ATTR void jtagtap_tms_seq(uint32_t MS, int ticks);
+static IRAM_ATTR void jtagtap_tdi_tdo_seq(uint8_t *DO, const uint8_t final_tms, const uint8_t *DI, int ticks);
+static IRAM_ATTR void jtagtap_tdi_seq(const uint8_t final_tms, const uint8_t *DI, int ticks);
+static IRAM_ATTR uint8_t jtagtap_next(uint8_t dTMS, uint8_t dTDI);
+static uint32_t swd_delay_cnt = 0;
 
 int jtagtap_init()
 {
+	gpio_reset_pin(CONFIG_TDI_GPIO);
+	gpio_reset_pin(CONFIG_TDO_GPIO);
+	gpio_reset_pin(CONFIG_TMS_SWDIO_GPIO);
+	gpio_reset_pin(CONFIG_TCK_SWCLK_GPIO);
+	gpio_reset_pin(CONFIG_TMS_SWDIO_DIR_GPIO);
+
+	gpio_set_direction(CONFIG_TDI_GPIO, GPIO_MODE_OUTPUT);
+	gpio_set_direction(CONFIG_TDO_GPIO, GPIO_MODE_INPUT);
+	gpio_set_direction(CONFIG_TMS_SWDIO_GPIO, GPIO_MODE_OUTPUT);
+	gpio_set_direction(CONFIG_TCK_SWCLK_GPIO, GPIO_MODE_OUTPUT);
+	gpio_set_direction(CONFIG_TMS_SWDIO_DIR_GPIO, GPIO_MODE_OUTPUT);
+
+	TMS_SET_MODE();
+
 	jtag_proc.jtagtap_reset = jtagtap_reset;
 	jtag_proc.jtagtap_next = jtagtap_next;
 	jtag_proc.jtagtap_tms_seq = jtagtap_tms_seq;
 	jtag_proc.jtagtap_tdi_tdo_seq = jtagtap_tdi_tdo_seq;
 	jtag_proc.jtagtap_tdi_seq = jtagtap_tdi_seq;
 
-	esp32_spi_init(0);
-
-	gpio_ll_output_enable(GPIO_HAL_GET_HW(GPIO_PORT_0), CONFIG_TMS_SWDIO_GPIO);
-	gpio_ll_output_enable(GPIO_HAL_GET_HW(GPIO_PORT_0), CONFIG_TDI_GPIO);
-
-	jtag_drive_mode = JTAG_DRIVE_UNINIT;
-
-	// Reset SW-DP
-	jtagtap_tms_seq_tdi(0xffffffff, 0, 32);
-	jtagtap_tms_seq_tdi(0xffffffff, 0, 50 - 32);
-
-	// SWD to JTAG sequence
-	// 0011 1100 1110 0111
-	jtagtap_tms_seq(0xE73C, 16);
-
-	// // Ensure we're reset in the new JTAG mode
-	// jtagtap_tms_seq_tdi(0xffffffff, 0, 32);
-	// jtagtap_tms_seq_tdi(0xffffffff, 0, 32);
-
+	/* Go to JTAG mode for SWJ-DP */
+	for (int i = 0; i <= 50; i++)
+		jtagtap_next(1, 0);      /* Reset SW-DP */
+	jtagtap_tms_seq(0xE73C, 16); /* SWD to JTAG sequence */
 	jtagtap_soft_reset();
 
 	return 0;
@@ -115,247 +68,156 @@ int jtagtap_init()
 
 static void jtagtap_reset(void)
 {
+#ifdef TRST_PORT
+	if (platform_hwversion() == 0) {
+		volatile int i;
+		gpio_clear(TRST_PORT, TRST_PIN);
+		for (i = 0; i < 10000; i++)
+			asm("nop");
+		gpio_set(TRST_PORT, TRST_PIN);
+	}
+#endif
 	jtagtap_soft_reset();
 }
 
 static uint8_t jtagtap_next(uint8_t dTMS, uint8_t dTDI)
 {
 	uint16_t ret;
+	register volatile int32_t cnt;
 
-	jtag_drive(JTAG_DRIVE_TMS);
+	gpio_set_val(TMS_PORT, TMS_PIN, dTMS);
+	gpio_set_val(TDI_PORT, TDI_PIN, dTDI);
+	gpio_set(TCK_PORT, TCK_PIN);
+	for (cnt = swd_delay_cnt - 2; cnt > 0; cnt--)
+		;
+	ret = gpio_get(TDO_PORT, TDO_PIN);
+	gpio_clear(TCK_PORT, TCK_PIN);
+	for (cnt = swd_delay_cnt - 2; cnt > 0; cnt--)
+		;
 
-	gpio_set_level(CONFIG_TDI_GPIO, dTDI);
+	//DEBUG("jtagtap_next(TMS = %d, TDI = %d) = %d\n", dTMS, dTDI, ret);
 
-	bmp_spi_hw->data_buf[0] = !!dTMS;
-
-	spi_ll_set_miso_bitlen(bmp_spi_hw, 1);
-	spi_ll_set_mosi_bitlen(bmp_spi_hw, 1);
-	spi_ll_master_user_start(bmp_spi_hw);
-	while (spi_ll_get_running_cmd(bmp_spi_hw)) {
-		// portYIELD();
-	}
-
-	ret = bmp_spi_hw->data_buf[0] & 1;
-#ifdef DEBUG_JTAG_TRANSACTIONS
-	ESP_LOGI(TAG_LL, "jtagtap_next(TMS = %d, TDI = %d) = %d", dTMS, dTDI, ret);
-#endif
-
-	return ret;
-}
-
-void jtagtap_tms_seq_tdi(uint32_t MS, uint32_t tdi, int ticks)
-{
-#ifdef DEBUG_JTAG_TRANSACTIONS
-	ESP_LOGI(TAG_LL, "jtagtap_tms_seq_tdi(MS = %08x, tdi = %d, ticks = %d)", MS, tdi, ticks);
-#endif
-	if (!ticks) {
-		return;
-	}
-
-	// Swap TMS and TDI so we hold TDI fixed and write out TMS
-	gpio_set_level(CONFIG_TDI_GPIO, tdi);
-	jtag_drive(JTAG_DRIVE_TMS);
-
-	// Pre-set the final TMS bit for when we mux back to GPIO control
-	gpio_set_level(CONFIG_TMS_SWDIO_GPIO, MS & (1 << (ticks - 1)));
-
-	spi_ll_set_miso_bitlen(bmp_spi_hw, ticks);
-	spi_ll_set_mosi_bitlen(bmp_spi_hw, ticks);
-	bmp_spi_hw->data_buf[0] = MS;
-	spi_ll_master_user_start(bmp_spi_hw);
-	while (spi_ll_get_running_cmd(bmp_spi_hw)) {
-		// portYIELD();
-	}
-
-	// // Swap TDI and TMS back
-	// esp32_spi_mux_pin(CONFIG_TDI_GPIO, spi_periph_signal[BMP_SPI_BUS_ID].spid_out, spi_periph_signal[BMP_SPI_BUS_ID].spid_in);
-	// gpio_iomux_out(CONFIG_TMS_SWDIO_GPIO, PIN_FUNC_GPIO, false);
-	// esp_rom_gpio_connect_out_signal(CONFIG_TMS_SWDIO_GPIO, SIG_GPIO_OUT_IDX, false, false);
-	// gpio_set_direction(CONFIG_TMS_SWDIO_GPIO, GPIO_MODE_OUTPUT);
+	return ret != 0;
 }
 
 static void jtagtap_tms_seq(uint32_t MS, int ticks)
 {
-	jtagtap_tms_seq_tdi(MS, 0, ticks);
+	gpio_set_val(TDI_PORT, TDI_PIN, 1);
+	int data = MS & 1;
+	register volatile int32_t cnt;
+	if (swd_delay_cnt) {
+		while (ticks) {
+			gpio_set_val(TMS_PORT, TMS_PIN, data);
+			gpio_set(TCK_PORT, TCK_PIN);
+			for (cnt = swd_delay_cnt - 2; cnt > 0; cnt--)
+				;
+			MS >>= 1;
+			data = MS & 1;
+			ticks--;
+			gpio_clear(TCK_PORT, TCK_PIN);
+			for (cnt = swd_delay_cnt - 2; cnt > 0; cnt--)
+				;
+		}
+	} else {
+		while (ticks) {
+			gpio_set_val(TMS_PORT, TMS_PIN, data);
+			gpio_set(TCK_PORT, TCK_PIN);
+			MS >>= 1;
+			data = MS & 1;
+			ticks--;
+			gpio_clear(TCK_PORT, TCK_PIN);
+		}
+	}
 }
 
-void jtagtap_tdi_tdo_seq(uint8_t *DO, const uint8_t final_tms, const uint8_t *DI, int ticks)
+static void jtagtap_tdi_tdo_seq(uint8_t *DO, const uint8_t final_tms, const uint8_t *DI, int ticks)
 {
-	uint32_t final_word_ticks = ticks & 31;
-	if (!ticks) {
-		return;
-	}
-
-	// Since we use PIO, we can only support 512 bits per transfer.
-	if (ticks > 512) {
-		ESP_LOGE("jtag", "ticks is %d which is more than 512", ticks);
-		return;
-	}
-
-	// DI might not be byte-aligned, so use memcpy to copy it
-	uint32_t aligned_buffer[1 + ((ticks - 1) / 32)];
-	memcpy(aligned_buffer, DI, sizeof(aligned_buffer));
-	int data_buf_offset = 0;
-	for (data_buf_offset = 0; data_buf_offset < (sizeof(aligned_buffer) / 4); data_buf_offset += 1) {
-		bmp_spi_hw->data_buf[data_buf_offset] = aligned_buffer[data_buf_offset];
-	}
-	uint32_t final_bit = (aligned_buffer[((ticks - 1) / 32)] >> final_word_ticks) & 1;
-
-	gpio_set_level(CONFIG_TMS_SWDIO_GPIO, 0);
-	jtag_drive(JTAG_DRIVE_TDI);
-
-	if (final_tms) {
-		if (ticks > 1) {
-			spi_ll_set_miso_bitlen(bmp_spi_hw, ticks - 1);
-			spi_ll_set_mosi_bitlen(bmp_spi_hw, ticks - 1);
-			spi_ll_master_user_start(bmp_spi_hw);
-			while (spi_ll_get_running_cmd(bmp_spi_hw)) {
-				// portYIELD();
+	uint8_t index = 1;
+	gpio_set_val(TMS_PORT, TMS_PIN, 0);
+	uint8_t res = 0;
+	register volatile int32_t cnt;
+	if (swd_delay_cnt) {
+		while (ticks > 1) {
+			gpio_set_val(TDI_PORT, TDI_PIN, *DI & index);
+			gpio_set(TCK_PORT, TCK_PIN);
+			for (cnt = swd_delay_cnt - 2; cnt > 0; cnt--)
+				;
+			if (gpio_get(TDO_PORT, TDO_PIN)) {
+				res |= index;
 			}
-
-			for (data_buf_offset = 0; data_buf_offset < (sizeof(aligned_buffer) / 4); data_buf_offset += 1) {
-				aligned_buffer[data_buf_offset] = bmp_spi_hw->data_buf[data_buf_offset];
+			if (!(index <<= 1)) {
+				*DO = res;
+				res = 0;
+				index = 1;
+				DI++;
+				DO++;
 			}
-			memcpy(DO, aligned_buffer, sizeof(aligned_buffer));
-		}
-
-		// Transfer final bit with TMS high
-		gpio_set_level(CONFIG_TMS_SWDIO_GPIO, final_tms);
-
-		// Perform the transfer of the final bit
-		spi_ll_set_miso_bitlen(bmp_spi_hw, 1);
-		spi_ll_set_mosi_bitlen(bmp_spi_hw, 1);
-		bmp_spi_hw->data_buf[0] = final_bit;
-		spi_ll_master_user_start(bmp_spi_hw);
-		while (spi_ll_get_running_cmd(bmp_spi_hw)) {
-			// portYIELD();
-		}
-
-		// If the last bit is set, OR it into the resulting packet
-		if (bmp_spi_hw->data_buf[0] & 1) {
-			DO[((ticks - 1) / 32)] |= (1 << (ticks - 1 & 7));
+			ticks--;
+			gpio_clear(TCK_PORT, TCK_PIN);
+			for (cnt = swd_delay_cnt - 2; cnt > 0; cnt--)
+				;
 		}
 	} else {
-		spi_ll_set_miso_bitlen(bmp_spi_hw, ticks);
-		spi_ll_set_mosi_bitlen(bmp_spi_hw, ticks);
-		spi_ll_master_user_start(bmp_spi_hw);
-		while (spi_ll_get_running_cmd(bmp_spi_hw)) {
-			// portYIELD();
+		while (ticks > 1) {
+			gpio_set_val(TDI_PORT, TDI_PIN, *DI & index);
+			gpio_set(TCK_PORT, TCK_PIN);
+			if (gpio_get(TDO_PORT, TDO_PIN)) {
+				res |= index;
+			}
+			if (!(index <<= 1)) {
+				*DO = res;
+				res = 0;
+				index = 1;
+				DI++;
+				DO++;
+			}
+			ticks--;
+			gpio_clear(TCK_PORT, TCK_PIN);
 		}
-		for (data_buf_offset = 0; data_buf_offset < (sizeof(aligned_buffer) / 4); data_buf_offset += 1) {
-			aligned_buffer[data_buf_offset] = bmp_spi_hw->data_buf[data_buf_offset];
-		}
-		memcpy(DO, aligned_buffer, sizeof(aligned_buffer));
 	}
-
-#ifdef DEBUG_JTAG_TRANSACTIONS
-	if (ticks < 32) {
-		ESP_LOGI(TAG_LL,
-			"jtagtap_tdi_tdo_seq(DO = %02x%02x%02x%02x, final_tms = %d, DI = %02x%02x%02x%02x, ticks = %d)", DO[0],
-			DO[1], DO[2], DO[3], final_tms, DI[0], DI[1], DI[2], DI[3], ticks);
-	} else if (ticks < 64) {
-		ESP_LOGI(TAG_LL,
-			"jtagtap_tdi_tdo_seq(DO = %02x%02x%02x%02x %02x%02x%02x%02x, final_tms = %d, DI = %02x%02x%02x%02x "
-		    "%02x%02x%02x%02x, ticks = %d)",
-			DO[0], DO[1], DO[2], DO[3], DO[4], DO[5], DO[6], DO[7], final_tms, DI[0], DI[1], DI[2], DI[3], DI[4], DI[5],
-			DI[6], DI[7], ticks);
-	} else if (ticks < 96) {
-		ESP_LOGI(TAG_LL,
-			"jtagtap_tdi_tdo_seq(DO = %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x, final_tms = %d, DI = "
-		    "%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x, ticks = %d)",
-			DO[0], DO[1], DO[2], DO[3], DO[4], DO[5], DO[6], DO[7], DO[8], DO[9], DO[10], DO[11], final_tms, DI[0],
-			DI[1], DI[2], DI[3], DI[4], DI[5], DI[6], DI[7], DI[8], DI[9], DI[10], DI[11], ticks);
-	} else if (ticks < 128) {
-		ESP_LOGI(TAG_LL,
-			"jtagtap_tdi_tdo_seq(DO = %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x, final_tms = "
-		    "%d, DI = %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x, ticks = %d)",
-			DO[0], DO[1], DO[2], DO[3], DO[4], DO[5], DO[6], DO[7], DO[8], DO[9], DO[10], DO[11], DO[12], DO[13],
-			DO[14], DO[15], final_tms, DI[0], DI[1], DI[2], DI[3], DI[4], DI[5], DI[6], DI[7], DI[8], DI[9], DI[10],
-			DI[11], DI[12], DI[13], DI[14], DI[15], ticks);
-	} else {
-		ESP_LOGI(TAG_LL,
-			"jtagtap_tdi_tdo_seq(DO = %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x ..., "
-		    "final_tms = %d, DI = %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x ..., ticks = %d)",
-			DO[0], DO[1], DO[2], DO[3], DO[4], DO[5], DO[6], DO[7], DO[8], DO[9], DO[10], DO[11], DO[12], DO[13],
-			DO[14], DO[15], final_tms, DI[0], DI[1], DI[2], DI[3], DI[4], DI[5], DI[6], DI[7], DI[8], DI[9], DI[10],
-			DI[11], DI[12], DI[13], DI[14], DI[15], ticks);
+	gpio_set_val(TMS_PORT, TMS_PIN, final_tms);
+	gpio_set_val(TDI_PORT, TDI_PIN, *DI & index);
+	gpio_set(TCK_PORT, TCK_PIN);
+	for (cnt = swd_delay_cnt - 2; cnt > 0; cnt--)
+		;
+	if (gpio_get(TDO_PORT, TDO_PIN)) {
+		res |= index;
 	}
-#endif
+	*DO = res;
+	gpio_clear(TCK_PORT, TCK_PIN);
+	for (cnt = swd_delay_cnt - 2; cnt > 0; cnt--)
+		;
 }
 
 static void jtagtap_tdi_seq(const uint8_t final_tms, const uint8_t *DI, int ticks)
 {
-	if (!ticks) {
-		return;
-	}
-	if (ticks > 512) {
-		ESP_LOGE("jtag", "ticks is %d which is more than 512", ticks);
-		return;
-	}
-
-	gpio_set_level(CONFIG_TMS_SWDIO_GPIO, 0);
-	jtag_drive(JTAG_DRIVE_TDI);
-
-	// DI might not be byte-aligned, so use memcpy to copy it
-	uint32_t final_word_ticks = ticks & 31;
-	uint32_t aligned_buffer[1 + ((ticks - 1) / 32)];
-	memcpy(aligned_buffer, DI, sizeof(aligned_buffer));
-	int data_buf_offset = 0;
-	for (data_buf_offset = 0; data_buf_offset < (sizeof(aligned_buffer) / 4); data_buf_offset += 1) {
-		bmp_spi_hw->data_buf[data_buf_offset] = aligned_buffer[data_buf_offset];
-	}
-	uint32_t final_bit = (aligned_buffer[((ticks - 1) / 32)] >> final_word_ticks) & 1;
-
-#ifdef DEBUG_JTAG_TRANSACTIONS
-	if (ticks < 32) {
-		ESP_LOGI(TAG_LL, "jtagtap_tdi_seq(final_tms = %d, DI = %08x, ticks = %d)", final_tms, bmp_spi_hw->data_buf[0],
-			ticks);
-	} else if (ticks < 64) {
-		ESP_LOGI(TAG_LL, "jtagtap_tdi_seq(final_tms = %d, DI = %08x %08x, ticks = %d)", final_tms,
-			bmp_spi_hw->data_buf[0], bmp_spi_hw->data_buf[1], ticks);
-	} else if (ticks < 96) {
-		ESP_LOGI(TAG_LL, "jtagtap_tdi_seq(final_tms = %d, DI = %08x %08x %08x, ticks = %d)", final_tms,
-			bmp_spi_hw->data_buf[0], bmp_spi_hw->data_buf[1], bmp_spi_hw->data_buf[2], ticks);
-	} else if (ticks < 128) {
-		ESP_LOGI(TAG_LL, "jtagtap_tdi_seq(final_tms = %d, DI = %08x %08x %08x %08x, ticks = %d)", final_tms,
-			bmp_spi_hw->data_buf[0], bmp_spi_hw->data_buf[1], bmp_spi_hw->data_buf[2], bmp_spi_hw->data_buf[3], ticks);
-	} else {
-		ESP_LOGI(TAG_LL, "jtagtap_tdi_seq(final_tms = %d, DI = %08x %08x %08x %08x ..., ticks = %d)", final_tms,
-			bmp_spi_hw->data_buf[0], bmp_spi_hw->data_buf[1], bmp_spi_hw->data_buf[2], bmp_spi_hw->data_buf[3], ticks);
-	}
-#endif
-
-	// If the final TMS bit is set, transfer everything except the final
-	// bit first, then adjust the TMS line and transfer the final bit.
-	// If the final TMS is 0, then we can skip that and transfer the entire packet
-	// at once.
-	if (final_tms) {
-		// If there's more than one tick, transfer the packet
-		if (ticks > 1) {
-			spi_ll_set_miso_bitlen(bmp_spi_hw, ticks - 1);
-			spi_ll_set_mosi_bitlen(bmp_spi_hw, ticks - 1);
-			spi_ll_master_user_start(bmp_spi_hw);
-			while (spi_ll_get_running_cmd(bmp_spi_hw)) {
-				// portYIELD();
+	uint8_t index = 1;
+	register volatile int32_t cnt;
+	if (swd_delay_cnt) {
+		while (ticks--) {
+			gpio_set_val(TMS_PORT, TMS_PIN, ticks ? 0 : final_tms);
+			gpio_set_val(TDI_PORT, TDI_PIN, *DI & index);
+			gpio_set(TCK_PORT, TCK_PIN);
+			for (cnt = swd_delay_cnt - 2; cnt > 0; cnt--)
+				;
+			if (!(index <<= 1)) {
+				index = 1;
+				DI++;
 			}
-		}
-
-		// Transfer final bit with TMS high
-		gpio_set_level(CONFIG_TMS_SWDIO_GPIO, final_tms);
-
-		spi_ll_set_miso_bitlen(bmp_spi_hw, 1);
-		spi_ll_set_mosi_bitlen(bmp_spi_hw, 1);
-		bmp_spi_hw->data_buf[0] = final_bit;
-		spi_ll_master_user_start(bmp_spi_hw);
-		while (spi_ll_get_running_cmd(bmp_spi_hw)) {
-			// portYIELD();
+			gpio_clear(TCK_PORT, TCK_PIN);
+			for (cnt = swd_delay_cnt - 2; cnt > 0; cnt--)
+				;
 		}
 	} else {
-		spi_ll_set_miso_bitlen(bmp_spi_hw, ticks);
-		spi_ll_set_mosi_bitlen(bmp_spi_hw, ticks);
-		spi_ll_master_user_start(bmp_spi_hw);
-		while (spi_ll_get_running_cmd(bmp_spi_hw)) {
-			// portYIELD();
+		while (ticks--) {
+			gpio_set_val(TMS_PORT, TMS_PIN, ticks ? 0 : final_tms);
+			gpio_set_val(TDI_PORT, TDI_PIN, *DI & index);
+			gpio_set(TCK_PORT, TCK_PIN);
+			if (!(index <<= 1)) {
+				index = 1;
+				DI++;
+			}
+			gpio_clear(TCK_PORT, TCK_PIN);
 		}
 	}
 }

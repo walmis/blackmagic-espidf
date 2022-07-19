@@ -3,8 +3,15 @@
 
 #include <stdint.h>
 #include "driver/spi_master.h"
+#include "soc/spi_struct.h"
+// #if CONFIG_IDF_TARGET_ESP32
+// #define BMP_SPI_BUS_ID HSPI_HOST
+// #elif CONFIG_IDF_TARGET_ESP32S3
+#define BMP_SPI_BUS_ID SPI2_HOST
+// #else
+// #pragma error "Unrecognized ESP part"
+// #endif
 
-#define BMP_SPI_BUS_ID HSPI_HOST
 extern spi_device_handle_t bmp_spi_handle;
 extern spi_dev_t *bmp_spi_hw;
 

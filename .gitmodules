@@ -1,9 +1,6 @@
 [submodule "espfs"]
 	path = components/frogfs
 	url = https://github.com/xobs/libespfs.git
-[submodule "libesphttpd"]
-	path = components/libesphttpd
-	url = https://github.com/xobs/libesphttpd.git
 [submodule "components/blackmagic/blackmagic"]
 	path = components/blackmagic/blackmagic
 	url = https://github.com/blacksphere/blackmagic.git

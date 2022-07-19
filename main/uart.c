@@ -3,14 +3,12 @@
 #include "esp_attr.h"
 #include "esp_log.h"
 #include "esp_sleep.h"
-#include "driver/periph_ctrl.h"
 #include "driver/uart.h"
 #include "freertos/semphr.h"
 #include "hal/uart_hal.h"
 #include "nvs_flash.h"
 #include "soc/uart_reg.h"
 #include "soc/uart_periph.h"
-#include "uhci/uhci.h"
 
 #include "sdkconfig.h"
 
@@ -55,7 +53,7 @@ uint32_t uart_queue_full_cnt;
 uint32_t uart_rx_count;
 uint32_t uart_tx_count;
 
-static xQueueHandle uart_event_queue;
+static QueueHandle_t uart_event_queue;
 
 struct {
 	volatile uint8_t m_get_idx;
@@ -98,11 +96,10 @@ static void putc_remote(void *ignored, char c)
 
 int vprintf_remote(const char *fmt, va_list va)
 {
-	tfp_format(NULL, putc_remote, fmt, va);
-
 	if (vprintf_orig) {
 		vprintf_orig(fmt, va);
 	}
+	tfp_format(NULL, putc_remote, fmt, va);
 	return 1;
 }
 
@@ -233,9 +230,8 @@ static void uart_config(void)
 		.stop_bits = UART_STOP_BITS_1,
 		.flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
 		.rx_flow_ctrl_thresh = 120,
-		.use_ref_tick = 0,
 	};
-	ESP_ERROR_CHECK(uart_driver_install(CONFIG_TARGET_UART_IDX, 4096, 256, 16, &uart_event_queue, 0));
+	ESP_ERROR_CHECK(uart_driver_install(CONFIG_TARGET_UART_IDX, 4096, 256, 16, &uart_event_queue, ESP_INTR_FLAG_IRAM));
 	ESP_ERROR_CHECK(uart_param_config(CONFIG_TARGET_UART_IDX, &uart_config));
 	ESP_ERROR_CHECK(uart_set_pin(
 		CONFIG_TARGET_UART_IDX, CONFIG_UART_TX_GPIO, CONFIG_UART_RX_GPIO, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
