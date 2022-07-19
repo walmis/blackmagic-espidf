@@ -28,5 +28,12 @@ endif()
 string(TIMESTAMP _time_stamp)
 configure_file(${CMAKE_SOURCE_DIR}/main/include/version.h.in ${CMAKE_SOURCE_DIR}/main/include/version.h @ONLY)
 
+# ESP-IDF creates this as part of the link step, but doesn't have it listed
+# in the BYPRODUCTS list. Add it here in order to silence the warning.
+add_custom_target(create_mapfile
+  COMMAND echo "Creating mapfile"
+  BYPRODUCTS "blackmagic.map")
+
+# Enable debug symbols, making it easier to work with the generated ELF file.
 set(CMAKE_CXX_FLAGS_RELEASE  "-g -ggdb3")
 set(CMAKE_C_FLAGS_RELEASE  "-g -ggdb3")
