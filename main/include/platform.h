@@ -52,18 +52,29 @@ void platform_set_baud(uint32_t baud);
 #define DEBUG(x, ...)
 #endif
 
+#define SWDIO_MODE_FLOAT() gpio_set_direction(SWDIO_PIN, GPIO_MODE_INPUT)
 
-#define TMS_SET_MODE()                                               \
-	do {                                                             \
-		gpio_set_direction(CONFIG_TMS_SWDIO_GPIO, GPIO_MODE_OUTPUT); \
+#define SWDIO_MODE_DRIVE() gpio_set_direction(SWDIO_PIN, GPIO_MODE_OUTPUT)
+
+#define TMS_SET_MODE()                                                   \
+	do {                                                                 \
+		gpio_reset_pin(CONFIG_TDI_GPIO);                                 \
+		gpio_reset_pin(CONFIG_TDO_GPIO);                                 \
+		gpio_reset_pin(CONFIG_TMS_SWDIO_GPIO);                           \
+		gpio_reset_pin(CONFIG_TCK_SWCLK_GPIO);                           \
+		gpio_reset_pin(CONFIG_TMS_SWDIO_DIR_GPIO);                       \
+                                                                         \
+		gpio_set_direction(CONFIG_TDI_GPIO, GPIO_MODE_OUTPUT);           \
+		gpio_set_direction(CONFIG_TDO_GPIO, GPIO_MODE_INPUT);            \
+		gpio_set_direction(CONFIG_TMS_SWDIO_GPIO, GPIO_MODE_OUTPUT);     \
+		gpio_set_direction(CONFIG_TCK_SWCLK_GPIO, GPIO_MODE_OUTPUT);     \
+		gpio_set_direction(CONFIG_TMS_SWDIO_DIR_GPIO, GPIO_MODE_OUTPUT); \
 	} while (0)
 
-// no-connects on ESP-01: 12,13,14,15
 #define TMS_PIN CONFIG_TMS_SWDIO_GPIO
 #define TCK_PIN CONFIG_TCK_SWCLK_GPIO
-
-#define TDI_PIN CONFIG_TDI_GPIO // "
-#define TDO_PIN CONFIG_TDO_GPIO // "
+#define TDI_PIN CONFIG_TDI_GPIO
+#define TDO_PIN CONFIG_TDO_GPIO
 
 #define SWDIO_PIN CONFIG_TMS_SWDIO_GPIO
 #define SWCLK_PIN CONFIG_TCK_SWCLK_GPIO
@@ -72,10 +83,6 @@ void platform_set_baud(uint32_t baud);
 #define SWCLK_PORT 0
 #define SWDIO_PORT 0
 
-#define gpio_enable(pin, mode)         \
-	do {                               \
-		gpio_set_direction(pin, mode); \
-	} while (0)
 #define gpio_set(port, pin)     \
 	do {                        \
 		gpio_set_level(pin, 1); \
@@ -95,10 +102,6 @@ void platform_set_baud(uint32_t baud);
 #define GPIO_INPUT  GPIO_MODE_INPUT
 #define GPIO_OUTPUT GPIO_MODE_OUTPUT
 
-#define SWDIO_MODE_FLOAT() gpio_set_direction(SWDIO_PIN, GPIO_MODE_INPUT);
-
-#define SWDIO_MODE_DRIVE() gpio_set_direction(SWDIO_PIN, GPIO_MODE_OUTPUT);
-
 #define PLATFORM_HAS_DEBUG
 #define PLATFORM_IDENT "esp32"
 #endif
@@ -106,3 +109,5 @@ void platform_set_baud(uint32_t baud);
 #define PLATFORM_HAS_TRACESWO
 #define NUM_TRACE_PACKETS (128) /* This is an 8K buffer */
 #define TRACESWO_PROTOCOL 2     /* 1 = Manchester, 2 = NRZ / async */
+
+	extern uint32_t swd_delay_cnt;

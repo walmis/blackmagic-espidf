@@ -68,6 +68,19 @@
 #define TAG "farpatch"
 
 nvs_handle h_nvs_conf;
+uint32_t swd_delay_cnt;
+
+static uint32_t frequency;
+
+int swdptap_set_frequency(uint32_t frequency)
+{
+	return frequency;
+}
+
+int swdptap_get_frequency(void)
+{
+	return frequency;
+}
 
 void platform_max_frequency_set(uint32_t freq)
 {
@@ -77,7 +90,6 @@ void platform_max_frequency_set(uint32_t freq)
 	if (freq > 48 * 1000 * 1000) {
 		return;
 	}
-	int swdptap_set_frequency(uint32_t frequency);
 	int actual_frequency = swdptap_set_frequency(freq);
 	ESP_LOGI(__func__, "freq:%u", actual_frequency);
 }
@@ -90,6 +102,12 @@ uint32_t platform_max_frequency_get(void)
 
 void platform_init(void)
 {
+	gpio_reset_pin(CONFIG_TDI_GPIO);
+	gpio_reset_pin(CONFIG_TDO_GPIO);
+	gpio_reset_pin(CONFIG_TMS_SWDIO_GPIO);
+	gpio_reset_pin(CONFIG_TCK_SWCLK_GPIO);
+	gpio_reset_pin(CONFIG_TMS_SWDIO_DIR_GPIO);
+
 	// Reset Button
 	{
 		void handle_wifi_reset(void *parameter);
@@ -97,7 +115,7 @@ void platform_init(void)
 		const gpio_config_t gpio_conf = {
 			.pin_bit_mask = BIT64(GPIO_NUM_0),
 			.mode = GPIO_MODE_INPUT,
-			.pull_up_en = 0,
+			.pull_up_en = GPIO_PULLUP_ENABLE,
 			.pull_down_en = 0,
 			.intr_type = GPIO_INTR_NEGEDGE,
 		};
@@ -107,6 +125,20 @@ void platform_init(void)
 		gpio_intr_enable(GPIO_NUM_0);
 		gpio_isr_handler_add(GPIO_NUM_0, handle_wifi_reset, NULL);
 	}
+
+	// TDO / SWO
+	{
+		const gpio_config_t gpio_conf = {
+			.pin_bit_mask = BIT64(CONFIG_TDO_GPIO),
+			.mode = GPIO_MODE_INPUT,
+			.pull_up_en = 0,
+			.pull_down_en = 0,
+			.intr_type = GPIO_INTR_DISABLE,
+		};
+		gpio_config(&gpio_conf);
+	}
+
+	// TMS / SWDIO
 	{
 		const gpio_config_t gpio_conf = {
 			.pin_bit_mask = BIT64(CONFIG_TMS_SWDIO_GPIO),
@@ -118,6 +150,8 @@ void platform_init(void)
 		gpio_config(&gpio_conf);
 		gpio_set_level(CONFIG_TMS_SWDIO_GPIO, 1);
 	}
+
+	// TCK / SWCLK
 	{
 		const gpio_config_t gpio_conf = {
 			.pin_bit_mask = BIT64(CONFIG_TCK_SWCLK_GPIO),
@@ -127,8 +161,10 @@ void platform_init(void)
 			.intr_type = GPIO_INTR_DISABLE,
 		};
 		gpio_config(&gpio_conf);
-		gpio_set_level(CONFIG_TMS_SWDIO_GPIO, 1);
+		gpio_set_level(CONFIG_TCK_SWCLK_GPIO, 1);
 	}
+
+	// NRST
 	{
 		const gpio_config_t gpio_conf = {
 			.pin_bit_mask = BIT64(CONFIG_NRST_GPIO),
@@ -139,6 +175,32 @@ void platform_init(void)
 		};
 		gpio_set_level(CONFIG_NRST_GPIO, 1);
 		gpio_config(&gpio_conf);
+	}
+
+	// TDI / SWDIO
+	{
+		const gpio_config_t gpio_conf = {
+			.pin_bit_mask = BIT64(CONFIG_TDI_GPIO),
+			.mode = GPIO_MODE_OUTPUT,
+			.pull_up_en = 0,
+			.pull_down_en = 0,
+			.intr_type = GPIO_INTR_DISABLE,
+		};
+		gpio_config(&gpio_conf);
+		gpio_set_level(CONFIG_TDI_GPIO, 1);
+	}
+
+	// TMS/SWDIO level shifter direction
+	{
+		const gpio_config_t gpio_conf = {
+			.pin_bit_mask = BIT64(CONFIG_TMS_SWDIO_DIR_GPIO),
+			.mode = GPIO_MODE_OUTPUT,
+			.pull_up_en = 0,
+			.pull_down_en = 0,
+			.intr_type = GPIO_INTR_DISABLE,
+		};
+		gpio_config(&gpio_conf);
+		gpio_set_level(CONFIG_TMS_SWDIO_DIR_GPIO, 1);
 	}
 }
 
