@@ -1,10 +1,11 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
 
 <head>
   <link rel="stylesheet" href="xterm.css" />
   <script src="xterm.js"></script>
   <script src="xterm-addon-fit.js"></script>
+  <script src="jquery.js"></script>
 </head>
 <style>
   body {
@@ -14,7 +15,7 @@
 
 <body>
   <div id="terminal" style="height: 90vh"></div>
-
+  <div id="status">Connecting...</div>
   <script>
     var line_items = [];
     var idx = -1;
@@ -25,13 +26,18 @@
     term.loadAddon(fitAddon);
 
     var socket;
+    var firstConnection = true;
 
     function createSocket() {
+      if (socket && !socket.replacementCreated) {
+        socket.close();
+      }
       socket = new WebSocket("ws://" + window.location.host + "/debugws");
       socket.binaryType = 'arraybuffer';
+      socket.replacementCreated = false;
       socket.ontimeout = function () {
         if (socket.readyState == WebSocket.OPEN) {
-          console.log("Poking timeout on " + socket);
+          // console.log("Poking timeout on " + socket);
           socket.send('');
         }
       };
@@ -45,22 +51,32 @@
       };
 
       socket.onerror = function (event) {
-        term.write("socket had an error: " + event);
-        clearInterval(socket.intervalId);
-        createSocket();
+        socket.close();
       }
 
       socket.onclose = function (event) {
+        socket.onerror = undefined;
+        socket.onclose = undefined;
         if (event.wasClean) {
-          term.write("[Websocket] Connection closed");
+          $("#status").text("Connection closed");
         } else {
-          // e.g. server process killed or network down
-          // event.code is usually 1006 in this case
-          term.write("[Websocket] Connection died");
+          $("#status").text("Reconnecting...");
         }
         clearInterval(socket.intervalId);
-        createSocket();
+        if (!socket.replacementCreated) {
+          socket.replacementCreated = true;
+          createSocket();
+        } else {
+          console.log("a replacement socket was already being created -- skipping");
+        }
       };
+      socket.onopen = function (event) {
+        $("#status").text("Connected");
+        if (!firstConnection) {
+          term.write("[Websocket] Connection reestablished\n");
+        }
+        firstConnection = false;
+      }
       socket.intervalId = setInterval(socket.ontimeout, 2000, socket);
     }
     createSocket();
