@@ -5,13 +5,18 @@
 
 #include <esp_log.h>
 
-static int debug_handles[8];
-static int rtt_handles[8];
-static int uart_handles[8];
+struct websocket_session {
+	int fd;
+	uint32_t cookie;
+};
+
+static struct websocket_session debug_handles[8];
+static struct websocket_session rtt_handles[8];
+static struct websocket_session uart_handles[8];
 extern httpd_handle_t http_daemon;
 
 struct websocket_config {
-	int *handles;
+	struct websocket_session *handles;
 	uint32_t handle_count;
 	void (*recv_cb)(httpd_handle_t handle, httpd_req_t *req, uint8_t *data, int len);
 };
@@ -50,7 +55,8 @@ const struct websocket_config rtt_websocket = {
 	.recv_cb = on_rtt_receive,
 };
 
-static void websocket_broadcast(httpd_handle_t hd, int *handles, int handle_max, uint8_t *buffer, size_t count)
+static void websocket_broadcast(
+	httpd_handle_t hd, struct websocket_session *handles, int handle_max, uint8_t *buffer, size_t count)
 {
 	if (hd == NULL) {
 		return;
@@ -60,16 +66,16 @@ static void websocket_broadcast(httpd_handle_t hd, int *handles, int handle_max,
 
 	int i;
 	for (i = 0; i < handle_max; i++) {
-		if (handles[i] == 0) {
+		if (handles[i].fd == 0) {
 			continue;
 		}
 		ws_pkt.payload = buffer;
 		ws_pkt.len = count;
 		ws_pkt.type = HTTPD_WS_TYPE_BINARY;
-		int ret = httpd_ws_send_frame_async(hd, handles[i], &ws_pkt);
+		int ret = httpd_ws_send_frame_async(hd, handles[i].fd, &ws_pkt);
 		if (ret != ESP_OK) {
-			ESP_LOGE(__func__, "sockfd %d (index %d) is invalid! connection closed?", handles[i], i);
-			handles[i] = 0;
+			ESP_LOGE(__func__, "sockfd %d (index %d) is invalid! connection closed?", handles[i].fd, i);
+			handles[i].fd = 0;
 		}
 	}
 }
@@ -96,6 +102,12 @@ void http_debug_putc(uint8_t c, int flush)
 	}
 }
 
+static void cgi_websocket_close(void *ctx)
+{
+	uint32_t *fd = ctx;
+	*fd = 0;
+}
+
 esp_err_t cgi_websocket(httpd_req_t *req)
 {
 	esp_err_t ret;
@@ -106,18 +118,35 @@ esp_err_t cgi_websocket(httpd_req_t *req)
 		int sockfd = httpd_req_to_sockfd(req);
 		ESP_LOGI(__func__, "handshake done on %s, the new connection was opened with sockfd %d", req->uri, sockfd);
 		int i;
+		int free_idx = -1;
+
+		// See if the sockfd is already in use, possibly due to an unclean close
 		for (i = 0; i < cfg->handle_count; i++) {
-			if (cfg->handles[i] == 0) {
-				int opt = 1;
-				setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (void *)&opt, sizeof(opt));
-				cfg->handles[i] = sockfd;
+			if (cfg->handles[i].fd == sockfd) {
+				ESP_LOGE(__func__, "sockfd %d already existed in the handle list -- not adding duplicate", sockfd);
+				req->sess_ctx = &cfg->handles[i];
+				req->free_ctx = cgi_websocket_close;
 				return ESP_OK;
+			} else if (cfg->handles[i].fd == 0) {
+				free_idx = i;
 			}
+		}
+
+		// The socket handle is new, so add it to the list
+		if (free_idx != -1) {
+			int opt = 1;
+			setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (void *)&opt, sizeof(opt));
+			cfg->handles[free_idx].fd = sockfd;
+			cfg->handles[free_idx].cookie = esp_random();
+			req->sess_ctx = &cfg->handles[free_idx];
+			req->free_ctx = cgi_websocket_close;
+			return ESP_OK;
 		}
 		ESP_LOGE(__func__, "no free sockets to handle this connection");
 		return ESP_OK;
 	}
 
+	// TODO: Add a cookie header here
 	memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
 	ws_pkt.type = HTTPD_WS_TYPE_BINARY;
 	ret = httpd_ws_recv_frame(req, &ws_pkt, 0);
