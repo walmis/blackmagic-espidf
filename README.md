@@ -34,7 +34,7 @@ This was originally based on [blackmagic-espidf for ESP8266](https://github.com/
 
 ## Built-in Terminal
 
-![web](images/farpatch-web.gif)
+![web](images/farpatch-serial.gif)
 
 ## GDB Server on Port 2022
 
