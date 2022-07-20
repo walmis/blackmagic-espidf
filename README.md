@@ -1,97 +1,86 @@
 
 # Introduction
 
-blackmagic-espidf is a project which aims to support debugging SWD and JTAG targets over wifi by integrating [blackmagic](https://github.com/blacksphere/blackmagic) probe firmware to the espressif IDF platform for ESP32.
+Farpatch is a hardware debugger that is powered off of the `VTref` pin of a debug port and presents a wifi interface. This enables debugging JTAG and SWD remotely in systems that otherwise might be difficult to reach.
 
-This is based on [blackmagic-espidf for ESP8266](https://github.com/walmis/blackmagic-espidf) and has undergone extensive rewriting to make it work with ESP32.
+It is powered by the [blackmagic](https://github.com/blacksphere/blackmagic) project.
+
+This was originally based on [blackmagic-espidf for ESP8266](https://github.com/walmis/blackmagic-espidf) and has undergone extensive rework.
 
 ## Features
-- **NEW** Automatic Attach to target on connect to GDB server
-- **NEW** Live Expressions support in STM32CubeIDE
-- **NEW** Non-Stop GDB protocol and multiple GDB connections (beta)
-- All the debug features and supported targets of the [blackmagic](https://github.com/blacksphere/blackmagic) firmware:
-  * Targets ARM Cortex-M and Cortex-A based microcontrollers.
-  * Connects to the target processor using the JTAG or Serial Wire Debug (SWD) interface.
-  * Provides full debugging functionality, including: watchpoints, flash memory breakpoints, memory and register examination, flash memory programming, etc.
-  * Load your application into the target Flash memory or RAM.
-  * Single step through your program.
-  * Run your program in real-time and halt on demand.
-  * Examine and modify CPU registers and memory.
-  * Obtain a call stack backtrace.
-  * Set up to 6 hardware assisted breakpoints.
-  * Set up to 4 hardware assisted read, write or access watchpoints.
-  * Set unlimited software breakpoints when executing your application from RAM.
-- Implements the GDB extended remote debugging protocol for seamless integration with the GNU debugger and other GNU development tools.
-- GDB server on TCP port 2022
-- Serial port server on TCP port 23
-- Serial port over websocket on embedded http server (powered by xterm.js) @ http://192.168.4.1
+
+- Powered by the target using `VTref`
+- Compatible with 1.8V - 5V targets
+- Built-in web server with serial terminal
+- RTT support for serial-over-debug
+- GDB server on TCP port 2022 (configurable)
+- Serial port on TCP port 23
+- Wifi configuration via web interface
 - OTA updates over tftp
-- Platform/BMP debug messages terminal over http://192.168.4.1/debug.html
+- No drivers needed on the host PC
+- All the debug features and supported targets of the [blackmagic](https://github.com/blacksphere/blackmagic) firmware:
+  - Targets ARM Cortex-M and Cortex-A based microcontrollers.
+  - Connects to the target processor using the JTAG or Serial Wire Debug (SWD) interface.
+  - Provides full debugging functionality, including: watchpoints, flash memory breakpoints, memory and register examination, flash memory programming, etc.
+  - Load your application into the target Flash memory or RAM.
+  - Single step through your program.
+  - Run your program in real-time and halt on demand.
+  - Examine and modify CPU registers and memory.
+  - Obtain a call stack backtrace.
+  - Set up to 6 hardware assisted breakpoints.
+  - Set up to 4 hardware assisted read, write or access watchpoints.
+  - Set unlimited software breakpoints when executing your application from RAM.
+- Implements the GDB extended remote debugging protocol for seamless integration with the GNU debugger and other GNU development tools.
 
-## ![web](images/web.gif)
+## Built-in Terminal
 
-Live Expressions in STMCubeIDE
-## ![web](images/live.gif) 
+![web](images/farpatch-web.gif)
 
-STMCubeIDE settings
-## ![web](images/stmcube.png)
+## GDB Server on Port 2022
 
-## ![gdb connection](images/gdb.gif)
+![gdb connection](images/farpatch-gdb.gif)
 
-## Supported Targets:
-<p align="center">
-<a href="https://raw.githubusercontent.com/wiki/blacksphere/blackmagic/images/bmpm_ARM_Cortex-M_targets-2021.png"><img src="https://raw.githubusercontent.com/wiki/blacksphere/blackmagic/images/bmpm_ARM_Cortex-M_targets-2021.png" width="80%"></a><br/>
-<a href="https://raw.githubusercontent.com/wiki/blacksphere/blackmagic/images/bmpm_ARM_Cortex-A_alpha_targets.png"><img src="https://raw.githubusercontent.com/wiki/blacksphere/blackmagic/images/bmpm_ARM_Cortex-A_alpha_targets.png" width="80%"></a>
-</p>
+## Supported Targets
+
+Supports many ARM Cortex-M and Cortex-A targets. See the list at the [Blackmagic Repository](https://github.com/blackmagic-debug/blackmagic/wiki#supported-targets)
 
 ## Requirements
 
-ESP32 module with >= 2MB flash. Default configuration is set for 4MB flash for OTA updates. It's possible to configure for other flash sizes. see `make menuconfig`
-
-By disabling OTA it should work on 1MB devices.
+ESP32 module with >= 4MB flash. It's possible to configure for other flash sizes. see `idf.py menuconfig`
 
 ## GPIO defaults for ESP32
 
-GPIO27 - SWDIO / TMS
-
-GPIO17 - SWCLK / TCK
-
-GPIO19 - TDO
-
-GPIO5 - nRST
-
-GPIO13 - Power LED
-
-GPIO18 - UART TXD
-
-GPIO22 - UART RXD
+You can adjust the GPIO defaults by running `idf.py menuconfig`.
 
 ## Serial terminal
 
 Connecting to serial terminal can be done using socat:
 
-```
-socat tcp:192.168.4.1:23,crlf -,echo=0,raw,crlf
+```text
+socat tcp:$FARPATCH_IP:23,crlf -,echo=0,raw,crlf
 ```
 
 ## Building
 
-[Install ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/v4.4.1/esp32/get-started/index.html). Then build this project.
+The easiest way to build is to install the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=espressif.esp-idf-extension) for ESP-IDF. This will offer to install esp-idf for you. Select the `master` branch.
+
+You can then build by pressing `Ctrl-E Ctrl-B`.
+
+Alternately, if you have `esp-idf` installed, you can use `idf.py` to build it under Windows or Linux:
 
 ```bash
-git clone --recursive https://github.com/walmis/blackmagic-espidf.git
-cd blackmagic-espidf
-idf.py menuconfig # optional, if you want to change some settings
+git clone --recursive https://github.com/farpatch/farpatch.git
+cd farpatch
+idf.py menuconfig
 idf.py make
-make flash # this will flash using esptool.py over serial connection
 ```
 
 ## OTA Flashing
 
-If the firmware is already on the ESP32 device, it is possible to flash using tftp. Make sure you have tftp-hpa package installed then run:
+If the firmware is already on the device, it is possible to flash using tftp. Make sure you have tftp-hpa package installed then run:
 
 ```bash
-tftp -v -m octet 192.168.4.1 -c put build/blackmagic.bin firmware.bin
+tftp -v -m octet $FARPATCH_IP -c put build/blackmagic.bin firmware.bin
 ```
 
 ## Buy me a coffee
@@ -100,5 +89,4 @@ If you find this project useful, consider buying the original author a coffee :-
 
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=66JLPHXMD3XW2)
 
-Don't forget to support Blackmagic developers ! 
-
+Don't forget to support Blackmagic developers !
