@@ -20,7 +20,6 @@
     var line_items = [];
     var idx = -1;
 
-
     var term = new Terminal({ cursorBlink: true, convertEol: true });
     var fitAddon = new FitAddon.FitAddon();
     term.loadAddon(fitAddon);
@@ -37,13 +36,8 @@
       socket.replacementCreated = false;
       socket.ontimeout = function () {
         if (socket.readyState == WebSocket.OPEN) {
-          // console.log("Poking timeout on " + socket);
           socket.send('');
         }
-      };
-
-      socket.onopen = function (e) {
-        term.write("\x1B[1;3;31m[Websocket] Connection established\x1B[0m\r\n");
       };
 
       socket.onmessage = function (event) {
@@ -70,13 +64,16 @@
           console.log("a replacement socket was already being created -- skipping");
         }
       };
+
       socket.onopen = function (event) {
         $("#status").text("Connected");
-        if (!firstConnection) {
+        if (firstConnection) {
+          term.write("\x1B[1;3;31m[Websocket] Connection established\x1B[0m\r\n");
+        } else {
           term.write("[Websocket] Connection reestablished\n");
         }
         firstConnection = false;
-      }
+      };
       socket.intervalId = setInterval(socket.ontimeout, 2000, socket);
     }
     createSocket();
