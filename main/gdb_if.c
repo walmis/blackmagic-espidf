@@ -47,88 +47,41 @@
 #include <string.h>
 #include <assert.h>
 
-#define GDB_TLS_INDEX 1
+#define GDB_TLS_INDEX     1
+#define EXCEPTION_NETWORK 0x40
 
 static int num_clients;
 
 static QueueHandle_t gdb_mutex;
-static int gdb_if_serv;
-static target *cur_target;
-static target *last_target;
 
 struct gdb_wifi_instance {
 	int sock;
 	uint8_t buf[256];
 	int bufsize;
 	bool no_ack_mode;
+	bool is_shutting_down;
 	TaskHandle_t pid;
 };
 
-int gdb_main_loop(struct target_controller *tc, bool in_syscall);
+void gdb_main(void);
 
-static void gdb_target_destroy_callback(struct target_controller *tc, target *t)
-{
-	(void)tc;
-	if (cur_target == t)
-		cur_target = NULL;
-
-	if (last_target == t)
-		last_target = NULL;
-}
-
-void gdb_target_printf(struct target_controller *tc, const char *fmt, va_list ap);
-
-static struct target_controller gdb_controller = {
-	.destroy_callback = gdb_target_destroy_callback,
-	.printf = gdb_target_printf,
-
-	.open = hostio_open,
-	.close = hostio_close,
-	.read = hostio_read,
-	.write = hostio_write,
-	.lseek = hostio_lseek,
-	.rename = hostio_rename,
-	.unlink = hostio_unlink,
-	.stat = hostio_stat,
-	.fstat = hostio_fstat,
-	.gettimeofday = hostio_gettimeofday,
-	.isatty = hostio_isatty,
-	.system = hostio_system,
-	.errno_ = TARGET_EUNKNOWN,
-	.interrupted = false,
-};
-
-static void gdb_wifi_task(void *arg);
-static void gdb_wifi_destroy(struct gdb_wifi_instance *instance);
-static struct gdb_wifi_instance *new_gdb_wifi_instance(int sock);
-// static int gdb_wifi_fileno(struct gdb_wifi_instance *instance);
-unsigned char gdb_wifi_if_getchar_to(struct gdb_wifi_instance *instance, int timeout);
-static unsigned char gdb_wifi_if_getchar(struct gdb_wifi_instance *instance);
-static void gdb_wifi_if_putchar(struct gdb_wifi_instance *instance, unsigned char c, int flush);
-
-struct exception **get_innermost_exception()
+struct exception **get_innermost_exception(void)
 {
 	void **ptr = (void **)pvTaskGetThreadLocalStoragePointer(NULL, GDB_TLS_INDEX);
-	// ESP_LOGI("EX", "exceptiongot ptr %p %p %p", ptr, ptr[0], ptr[1]);
 	assert(ptr);
 	return (struct exception **)&ptr[1];
 }
 
-static struct gdb_wifi_instance *new_gdb_wifi_instance(int sock)
+static void gdb_wifi_destroy(struct gdb_wifi_instance *instance)
 {
-	char name[32];
-	snprintf(name, sizeof(name) - 1, "gdbc fd:%d", sock);
+	ESP_LOGI("gdb", "destroy %d", instance->sock);
+	num_clients--;
 
-	struct gdb_wifi_instance *instance = malloc(sizeof(struct gdb_wifi_instance));
-	if (!instance) {
-		return 0;
-	}
+	close(instance->sock);
 
-	memset(instance, 0, sizeof(*instance));
-	instance->sock = sock;
-
-	xTaskCreate(gdb_wifi_task, name, 5500, (void *)instance, 1, &instance->pid);
-	return instance;
+	TaskHandle_t pid = instance->pid;
+	free(instance);
+	vTaskDelete(pid);
 }
 
 static void gdb_wifi_task(void *arg)
@@ -139,7 +92,7 @@ static void gdb_wifi_task(void *arg)
 	tls[0] = arg;
 	vTaskSetThreadLocalStoragePointer(NULL, GDB_TLS_INDEX, tls); // used for exception handling
 
-	ESP_LOGI("GDB_client", "Started task %d this:%p tlsp:%p mowner:%p", instance->sock, instance, tls,
+	ESP_LOGI("gdb", "Started task %d this:%p tlsp:%p mowner:%p", instance->sock, instance, tls,
 		xQueueGetMutexHolder(gdb_mutex));
 
 	int opt = 1;
@@ -159,39 +112,48 @@ static void gdb_wifi_task(void *arg)
 	while (true) {
 		struct exception e;
 		TRY_CATCH (e, EXCEPTION_ALL) {
-			gdb_main_loop(&gdb_controller, false);
+			gdb_main();
+		}
+		if (e.type == EXCEPTION_NETWORK) {
+			ESP_LOGE("exception", "network exception -- exiting: %s", e.msg);
+			target_list_free();
+			break;
 		}
 		if (e.type) {
 			gdb_putpacketz("EFF");
 			target_list_free();
-			ESP_LOGI("Exception", "TARGET LOST e.type:%d", e.type);
+			ESP_LOGI("exception", "TARGET LOST e.type:%d", e.type);
 			// morse("TARGET LOST.", 1);
 		}
 	}
 
-	gdb_wifi_destroy(instance); // just in case
+	gdb_wifi_destroy(instance);
 }
 
-// static int gdb_wifi_fileno(struct gdb_wifi_instance *instance)
-// {
-// 	return instance->sock;
-// }
-
-static void gdb_wifi_destroy(struct gdb_wifi_instance *instance)
+static unsigned char gdb_wifi_if_getchar(struct gdb_wifi_instance *instance)
 {
-	ESP_LOGI("GDB_client", "destroy %d", instance->sock);
-	num_clients--;
+	uint8_t tmp;
+	int ret;
 
-	// gdb_breaklock();
-	close(instance->sock);
+	if (instance->is_shutting_down) {
+		return 0;
+	}
 
-	TaskHandle_t pid = instance->pid;
-	free(instance);
-	vTaskDelete(pid);
+	ret = recv(instance->sock, &tmp, 1, 0);
+	if (ret <= 0) {
+		instance->is_shutting_down = true;
+		raise_exception(EXCEPTION_NETWORK, "error on getchar");
+		// should not be reached
+		return 0;
+	}
+	return tmp;
 }
 
-unsigned char gdb_wifi_if_getchar_to(struct gdb_wifi_instance *instance, int timeout)
+static unsigned char gdb_wifi_if_getchar_to(struct gdb_wifi_instance *instance, int timeout)
 {
+	if (instance->is_shutting_down) {
+		return 0xff;
+	}
 	// Optimization for "MSG_PEEK"
 	// if (timeout == 0) {
 	// 	uint8_t tmp;
@@ -210,39 +172,32 @@ unsigned char gdb_wifi_if_getchar_to(struct gdb_wifi_instance *instance, int tim
 	FD_ZERO(&fds);
 	FD_SET(instance->sock, &fds);
 
-	if (select(instance->sock + 1, &fds, NULL, NULL, (timeout >= 0) ? &tv : NULL) > 0) {
+	int ret = select(instance->sock + 1, &fds, NULL, NULL, (timeout >= 0) ? &tv : NULL);
+	if (ret > 0) {
 		char c = gdb_wifi_if_getchar(instance);
 		return c;
 	}
 
-	return 0xFF;
-}
-
-static unsigned char gdb_wifi_if_getchar(struct gdb_wifi_instance *instance)
-{
-	uint8_t tmp;
-
-	int ret;
-	ret = recv(instance->sock, &tmp, 1, 0);
-	if (ret <= 0) {
-		gdb_wifi_destroy(instance);
-		// should not be reached
-		return 0;
+	if (ret < 0) {
+		instance->is_shutting_down = true;
+		raise_exception(EXCEPTION_NETWORK, "error on getchar_to");
 	}
-	// if((tmp == '\x03') || (tmp == '\x04')) {
-	// 	ESP_LOGW(__func__, "Got Interrupt request");
-	// }
-	return tmp;
+	return 0xFF;
 }
 
 static void gdb_wifi_if_putchar(struct gdb_wifi_instance *instance, unsigned char c, int flush)
 {
+	if (instance->is_shutting_down) {
+		return;
+	}
+
 	instance->buf[instance->bufsize++] = c;
 	if (flush || (instance->bufsize == sizeof(instance->buf))) {
 		if (instance->sock > 0) {
 			int ret = send(instance->sock, instance->buf, instance->bufsize, 0);
 			if (ret <= 0) {
-				gdb_wifi_destroy(instance);
+				instance->is_shutting_down = true;
+				raise_exception(EXCEPTION_NETWORK, "error on putchar");
 				// should not be reached
 				return;
 			}
@@ -251,9 +206,26 @@ static void gdb_wifi_if_putchar(struct gdb_wifi_instance *instance, unsigned cha
 	}
 }
 
+static void new_gdb_wifi_instance(int sock)
+{
+	char name[CONFIG_FREERTOS_MAX_TASK_NAME_LEN];
+	snprintf(name, sizeof(name) - 1, "gdbc fd:%d", sock);
+
+	struct gdb_wifi_instance *instance = malloc(sizeof(struct gdb_wifi_instance));
+	if (!instance) {
+		return;
+	}
+
+	memset(instance, 0, sizeof(*instance));
+	instance->sock = sock;
+
+	xTaskCreate(gdb_wifi_task, name, 5500, (void *)instance, 1, &instance->pid);
+}
+
 void gdb_net_task(void *arg)
 {
 	struct sockaddr_in addr;
+	int gdb_if_serv;
 	int opt;
 
 	gdb_mutex = xSemaphoreCreateMutex();
@@ -270,7 +242,7 @@ void gdb_net_task(void *arg)
 	assert(bind(gdb_if_serv, (struct sockaddr *)&addr, sizeof(addr)) != -1);
 	assert(listen(gdb_if_serv, 1) != -1);
 
-	ESP_LOGI("GDB", "Listening on TCP:%d", CONFIG_TCP_PORT);
+	ESP_LOGI("gdb", "Listening on TCP:%d", CONFIG_TCP_PORT);
 
 	while (1) {
 		int s = accept(gdb_if_serv, NULL, NULL);
