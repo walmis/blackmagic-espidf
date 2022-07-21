@@ -326,7 +326,7 @@ void app_main(void)
 
 	uart_init();
 
-	xTaskCreate(&gdb_net_task, "gdb_net", 8192, NULL, 1, NULL);
+	xTaskCreate(&gdb_net_task, "gdb_net", 2000, NULL, 1, NULL);
 
 	ESP_LOGI(TAG, "starting tftp server");
 	ota_tftp_init_server(69, 4);
