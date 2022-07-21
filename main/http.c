@@ -525,6 +525,3 @@ httpd_handle_t webserver_start(void)
 
 	return http_daemon;
 }
-
-// It's unclear why this is necessary -- rtt.c doesn't actually work for some reason
-#include "rtt.c"

@@ -1,11 +1,14 @@
 #include <stdbool.h>
 #include <stdint.h>
+#include <esp_log.h>
 
 #include "CBUF.h"
 #include "http.h"
 #include "rtt_if.h"
 
 static bool rtt_initialized;
+
+#define TAG "rtt"
 
 static struct {
 	volatile uint8_t m_get_idx;
@@ -20,6 +23,7 @@ int rtt_if_init(void)
 		return 0;
 	}
 	CBUF_Init(rtt_msg_queue);
+	rtt_initialized = true;
 	return 0;
 }
 
