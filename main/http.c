@@ -31,6 +31,7 @@ extern const size_t frogfs_bin_len;
 extern void platform_set_baud(uint32_t);
 static frogfs_fs_t *frog_fs;
 httpd_handle_t http_daemon;
+extern esp_err_t cgi_rtt_status(httpd_req_t *req);
 
 #define TAG "httpd"
 
@@ -445,6 +446,11 @@ static const httpd_uri_t basic_handlers[] = {
 		.handler = cgi_websocket,
 		.user_ctx = (void *)&debug_websocket,
 		.is_websocket = true,
+	},
+	{
+		.uri = "/rtt/status",
+		.handler = cgi_rtt_status,
+		.method = HTTP_GET,
 	},
 	{
 		.uri = "/rtt",
