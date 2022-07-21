@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <stdint.h>
-#include <ctype.h>
 #include <esp_log.h>
 #include <esp_http_server.h>
 
@@ -94,38 +93,66 @@ esp_err_t cgi_rtt_status(httpd_req_t *req)
 			char *chan_ptr = value_string;
 			rtt_auto_channel = false;
 			int i = 2;
-			while (*chan_ptr) {
+			while (chan_ptr[0] != '\0') {
 				int chan = strtoul(chan_ptr, &chan_ptr, 0);
 				if ((chan >= 0) && (chan < MAX_RTT_CHAN))
 					rtt_channel[chan].is_enabled = true;
 
 				// Advance to the next digit in the string, e.g.
 				// channel=1,2,3,4
-				char c = *chan_ptr;
-				while ((*chan_ptr) && !isdigit(c)) {
+				while ((chan_ptr[0] != '\0') && (chan_ptr[0] < '0' || chan_ptr[0] > '9')) {
 					chan_ptr++;
-					c = *chan_ptr;
 				}
 				i += 1;
 			}
 		}
 	}
 
+	int channel_count = 0;
+	for (uint32_t i = 0; i < MAX_RTT_CHAN; i++) {
+		if (rtt_channel[i].is_enabled) {
+			channel_count += 1;
+		}
+	}
+	int len = 0;
+	value_string[0] = '\0';
+	for (uint32_t i = 0; (i < MAX_RTT_CHAN) && channel_count; i++) {
+		if (rtt_channel[i].is_enabled) {
+			len += snprintf(value_string + len, sizeof(value_string) - len, "%d", i);
+			// Append a ',' if this isn't the last character
+			if (channel_count > 1) {
+				channel_count -= 1;
+				len += snprintf(value_string + len, sizeof(value_string) - len, ",");
+			}
+		}
+	}
+
 	const char *format = "{"
-						 "\"ident\":\"%s\","
-						 "\"enabled\":%s,"
-						 "\"found\":%s,"
-						 "\"cbaddr\":%d,"
-						 "\"min_poll_ms\":%d,"
-						 "\"max_poll_ms\":%d,"
-						 "\"max_poll_errs\":%d,"
-						 "\"max_auto_channel\":%s,"
-						 "\"max_flag_skip\":%s,"
-						 "\"max_flag_block\":%s"
+						 "\"ident\":\"%s\","      // 1
+						 "\"enabled\":%s,"        // 2
+						 "\"found\":%s,"          // 3
+						 "\"cbaddr\":%d,"         // 4
+						 "\"min_poll_ms\":%d,"    // 5
+						 "\"max_poll_ms\":%d,"    // 6
+						 "\"max_poll_errs\":%d,"  // 7
+						 "\"auto_channel\":%s,"   // 8
+						 "\"max_flag_skip\":%s,"  // 9
+						 "\"max_flag_block\":%s," // 10
+						 "\"channels\":[%s]"      // 11
 						 "}";
-	int len = snprintf(buff, sizeof(buff), format, rtt_ident, rtt_enabled ? "true" : "false",
-		rtt_found ? "true" : "false", rtt_cbaddr, rtt_min_poll_ms, rtt_max_poll_ms, rtt_max_poll_errs,
-		rtt_auto_channel ? "true" : "false", rtt_flag_skip ? "true" : "false", rtt_flag_block ? "true" : "false");
+	len = snprintf(buff, sizeof(buff), format,
+		rtt_ident,                           // 1
+		rtt_enabled ? "true" : "false",      // 2
+		rtt_found ? "true" : "false",        // 3
+		rtt_cbaddr,                          // 4
+		rtt_min_poll_ms,                     // 5
+		rtt_max_poll_ms,                     // 6
+		rtt_max_poll_errs,                   // 7
+		rtt_auto_channel ? "true" : "false", // 8
+		rtt_flag_skip ? "true" : "false",    // 9
+		rtt_flag_block ? "true" : "false",   // 10
+		value_string                         // 11
+	);
 	httpd_resp_set_type(req, "text/json");
 	httpd_resp_send(req, buff, len);
 
