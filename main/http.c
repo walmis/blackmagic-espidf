@@ -48,7 +48,7 @@ esp_err_t cgi_uart_break(httpd_req_t *req)
 static esp_err_t cgi_baud(httpd_req_t *req)
 {
 	int len;
-	char buff[12];
+	char buff[24];
 	char querystring[64];
 
 	httpd_req_get_url_query_str(req, querystring, sizeof(querystring));
@@ -63,7 +63,7 @@ static esp_err_t cgi_baud(httpd_req_t *req)
 	uint32_t baud = 0;
 	uart_get_baudrate(0, &baud);
 
-	len = snprintf(buff, sizeof(buff), "{\"baudrate\": %u }", baud);
+	len = snprintf(buff, sizeof(buff), "{\"baudrate\": %lu }", baud);
 	httpd_resp_set_type(req, "text/json");
 	httpd_resp_send(req, buff, len);
 
@@ -312,7 +312,7 @@ typedef struct {
 static const MimeMap mimeTypes[] = {
 	{"htm", "text/html"}, {"html", "text/html"}, {"css", "text/css"}, {"js", "text/javascript"}, {"txt", "text/plain"},
 	{"jpg", "image/jpeg"}, {"jpeg", "image/jpeg"}, {"png", "image/png"}, {"svg", "image/svg+xml"}, {"xml", "text/xml"},
-	{"json", "application/json"}, {NULL, "text/html"}, //default value
+	{"json", "application/json"}, {"ico", "image/x-icon"}, {NULL, "text/html"}, //default value
 };
 
 //Returns a static char* to a mime type for a given url to a file.
