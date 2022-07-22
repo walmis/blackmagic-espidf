@@ -1,0 +1,19 @@
+name: Build Farpatch
+
+jobs:
+  build-farpatch:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+
+    - name: esp-idf build
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        # May try version release-v5.0 or v5.0 when it's out
+        esp_idf_version: latest
+        target: esp32s3
+        path: ''
