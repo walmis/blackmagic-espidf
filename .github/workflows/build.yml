@@ -21,6 +21,16 @@ jobs:
       with:
         node-version: 16
 
+    # Installs and upgrades pip, installs other dependencies and installs the package from setup.py
+    - name: "Installs and upgrades pip, installs other dependencies and installs the package from setup.py"
+      run: |
+        # dev headers
+        sudo apt-get install python3.10-dev libpython3.10-dev
+        # Upgrade pip
+        python3 -m pip install --upgrade pip
+        # Install build deps
+        python3 -m pip install setuptools wheel twine
+
     - name: esp-idf build
       uses: espressif/esp-idf-ci-action@v1
       with:
