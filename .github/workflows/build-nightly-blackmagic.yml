@@ -1,0 +1,76 @@
+name: build nightly
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow nightly (SGT)
+  schedule:
+    #        ┌───────────── minute (0 - 59)
+    #        │  ┌───────────── hour (0 - 23)
+    #        │  │  ┌───────────── day of the month (1 - 31)
+    #        │  │  │ ┌───────────── month (1 - 12 or JAN-DEC)
+    #        │  │  │ │ ┌───────────── day of the week (0 - 6 or SUN-SAT)
+    #        │  │  │ │ │
+    #        │  │  │ │ │
+    #        │  │  │ │ │
+    #        *  *  * * *
+    - cron: '26 15 * * *'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch: 
+  
+jobs:
+  build-farpatch:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+        path: farpatch
+
+    - name: Install node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16
+
+    - name: Install Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install esp-idf dependencies
+      run: sudo apt-get install git wget flex bison gperf python3 python3-venv cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
+
+    - name: Checkout esp-idf
+      uses: actions/checkout@v2
+      with:
+        repository: espressif/esp-idf
+        submodules: recursive
+        path: esp-idf
+
+    - name: Install esp-idf
+      run: |
+        cd esp-idf
+        ./install.sh esp32s3,esp32
+
+    # Go into the `blackmagic` directory and check out the latest version
+    - name: Sync Blackmagic main
+      run: |
+        cd farpatch/components/blackmagic/blackmagic
+        git -C farpatch/components/blackmagic/blackmagic fetch origin
+        git -C farpatch/components/blackmagic/blackmagic checkout origin/main
+
+    - name: Build project for ESP32
+      run: |
+        . esp-idf/export.sh
+        cd farpatch
+        idf.py set-target esp32
+        idf.py build
+
+    - name: Build project for ESP32S3
+      run: |
+        . esp-idf/export.sh
+        cd farpatch
+        idf.py set-target esp32s3
+        idf.py build
