@@ -21,20 +21,33 @@ jobs:
       with:
         node-version: 16
 
-    - uses: actions/setup-python@v4
+    - name: Install Python
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.x'
+        python-version: '3.10'
 
-    - name: Find include directory
-      run: find /usr/include
+    - name: Install esp-idf dependencies
+      run: apt-get install git wget flex bison gperf python3 python3-venv cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
 
-    - name: List include/python3.8 directory
-      run: ls -l /usr/include/python3.8
-
-    - name: esp-idf build
-      uses: espressif/esp-idf-ci-action@v1
+    - name: Checkout esp-idf
+      uses: actions/checkout@v2
       with:
-        # May try version release-v5.0 or v5.0 when it's out
-        esp_idf_version: latest
-        target: esp32s3
-        path: ''
+        repository: espressif/esp-idf
+        submodules: recursive
+
+    - name: Install esp-idf
+      run: |
+        ls -l
+        cd esp-idf
+        ls -l
+        ./install.sh esp32s3
+
+    - name: Build project
+      run: |
+        ls -l
+        cd esp-idf
+        ls -l
+        . export.sh
+        cd ..
+        idf.py set-target esp32s3
+        idf.py build
