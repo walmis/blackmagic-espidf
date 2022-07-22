@@ -27,6 +27,7 @@ jobs:
 
     - name: List include directory
       run: find /usr/include
+      run: ls -l /usr/include/python3.8
 
     - name: esp-idf build
       uses: espressif/esp-idf-ci-action@v1
