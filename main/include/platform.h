@@ -110,4 +110,4 @@ void platform_set_baud(uint32_t baud);
 #define NUM_TRACE_PACKETS (128) /* This is an 8K buffer */
 #define TRACESWO_PROTOCOL 2     /* 1 = Manchester, 2 = NRZ / async */
 
-	extern uint32_t swd_delay_cnt;
+extern uint32_t swd_delay_cnt;
