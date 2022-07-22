@@ -21,16 +21,9 @@ jobs:
       with:
         node-version: 16
 
-    # Installs Python 3.8, upgrades pip, then installs other dependencies.
-    # This should be upgraded to a newer Python version when one is released.
-    - name: "Install Python, upgrade pip, and installs other dependencies"
-      run: |
-        # dev headers
-        sudo apt-get install python3.8-dev libpython3.8-dev python3.8
-        # Upgrade pip
-        python3 -m pip install --upgrade pip
-        # Install build deps
-        python3 -m pip install setuptools wheel twine
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
 
     - name: esp-idf build
       uses: espressif/esp-idf-ci-action@v1
