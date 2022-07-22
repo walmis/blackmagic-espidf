@@ -21,11 +21,12 @@ jobs:
       with:
         node-version: 16
 
-    # Installs and upgrades pip, installs other dependencies and installs the package from setup.py
-    - name: "Installs and upgrades pip, installs other dependencies and installs the package from setup.py"
+    # Installs Python 3.8, upgrades pip, then installs other dependencies.
+    # This should be upgraded to a newer Python version when one is released.
+    - name: "Install Python, upgrade pip, and installs other dependencies"
       run: |
         # dev headers
-        sudo apt-get install python3.10-dev libpython3.10-dev
+        sudo apt-get install python3.8-dev libpython3.8-dev
         # Upgrade pip
         python3 -m pip install --upgrade pip
         # Install build deps
