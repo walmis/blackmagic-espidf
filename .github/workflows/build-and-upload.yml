@@ -1,0 +1,78 @@
+name: build and upload
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push but only for the main branch
+  push:
+    branches: [ main ]
+  
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build-farpatch:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+        path: farpatch
+
+    - name: Install node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16
+
+    - name: Install Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install esp-idf dependencies
+      run: sudo apt-get install git wget flex bison gperf python3 python3-venv cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
+
+    - name: Checkout esp-idf
+      uses: actions/checkout@v2
+      with:
+        repository: espressif/esp-idf
+        submodules: recursive
+        path: esp-idf
+
+    - name: Install esp-idf
+      run: |
+        cd esp-idf
+        ./install.sh esp32s3,esp32
+
+    - name: Create artifacts directory
+      run: |
+        mkdir artifacts
+        mkdir artifacts/esp32
+        mkdir artifacts/esp32s3
+
+    - name: Build project for ESP32
+      run: |
+        . esp-idf/export.sh
+        cd farpatch
+        idf.py set-target esp32
+        rm sdkconfig
+        idf.py build
+        cp build/blackmagic.bin                       ../artifacts/esp32/blackmagic.bin
+        cp build/blackmagic.elf                       ../artifacts/esp32/blackmagic.elf
+        cp build/bootloader/bootloader.bin            ../artifacts/esp32/bootloader.bin
+        cp build/partition_table/partition_table.bin  ../artifacts/esp32/partition_table.bin
+        cp build/ota_data_initial.bin                 ../artifacts/esp32/ota_data_initial.bin
+
+    - name: Build project for ESP32S3
+      run: |
+        . esp-idf/export.sh
+        cd farpatch
+        idf.py set-target esp32s3
+        rm sdkconfig
+        idf.py build
+        cp build/blackmagic.bin                       ../artifacts/esp32s3/blackmagic.bin
+        cp build/blackmagic.elf                       ../artifacts/esp32s3/blackmagic.elf
+        cp build/bootloader/bootloader.bin            ../artifacts/esp32s3/bootloader.bin
+        cp build/partition_table/partition_table.bin  ../artifacts/esp32s3/partition_table.bin
+        cp build/ota_data_initial.bin                 ../artifacts/esp32s3/ota_data_initial.bin
