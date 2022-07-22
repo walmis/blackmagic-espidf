@@ -74,3 +74,18 @@ jobs:
         cp build/bootloader/bootloader.bin            ../artifacts/esp32s3/bootloader.bin
         cp build/partition_table/partition-table.bin  ../artifacts/esp32s3/partition-table.bin
         cp build/ota_data_initial.bin                 ../artifacts/esp32s3/ota_data_initial.bin
+
+    - name: Archive firmware build artifacts for ESP32 as a zip
+      uses: actions/upload-artifact@v2.2.4
+      with:
+        name: blackmagic-firmware-esp32.zip
+        path: ../artifacts/esp32/*
+        if-no-files-found: error
+        
+    - name: Archive firmware build artifacts for ESP32S3 as a zip
+      uses: actions/upload-artifact@v2.2.4
+      with:
+        name: blackmagic-firmware-esp32s3.zip
+        path: ../artifacts/esp32s3/*
+        if-no-files-found: error
+        
