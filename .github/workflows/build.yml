@@ -39,16 +39,12 @@ jobs:
 
     - name: Install esp-idf
       run: |
-        ls -l
         cd esp-idf
-        ls -l
         ./install.sh esp32s3
 
     - name: Build project
       run: |
-        ls -l
         cd esp-idf
-        ls -l
         . export.sh
         cd ../farpatch
         idf.py set-target esp32s3
