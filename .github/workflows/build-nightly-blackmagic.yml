@@ -57,7 +57,6 @@ jobs:
     # Go into the `blackmagic` directory and check out the latest version
     - name: Sync Blackmagic main
       run: |
-        cd farpatch/components/blackmagic/blackmagic
         git -C farpatch/components/blackmagic/blackmagic fetch origin
         git -C farpatch/components/blackmagic/blackmagic checkout origin/main
 
