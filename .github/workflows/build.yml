@@ -16,6 +16,11 @@ jobs:
       with:
         submodules: 'recursive'
 
+    - name: Install node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16
+
     - name: esp-idf build
       uses: espressif/esp-idf-ci-action@v1
       with:
