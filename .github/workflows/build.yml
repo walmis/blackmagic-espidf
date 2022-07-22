@@ -14,7 +14,8 @@ jobs:
     - name: Checkout repo
       uses: actions/checkout@v2
       with:
-        submodules: 'recursive'
+        submodules: recursive
+        path: farpatch
 
     - name: Install node.js
       uses: actions/setup-node@v3
@@ -34,6 +35,7 @@ jobs:
       with:
         repository: espressif/esp-idf
         submodules: recursive
+        path: esp-idf
 
     - name: Install esp-idf
       run: |
@@ -48,6 +50,6 @@ jobs:
         cd esp-idf
         ls -l
         . export.sh
-        cd ..
+        cd ../farpatch
         idf.py set-target esp32s3
         idf.py build
