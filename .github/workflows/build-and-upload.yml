@@ -79,13 +79,13 @@ jobs:
       uses: actions/upload-artifact@v2.2.4
       with:
         name: blackmagic-firmware-esp32.zip
-        path: ../artifacts/esp32/*
+        path: artifacts/esp32/*
         if-no-files-found: error
         
     - name: Archive firmware build artifacts for ESP32S3 as a zip
       uses: actions/upload-artifact@v2.2.4
       with:
         name: blackmagic-firmware-esp32s3.zip
-        path: ../artifacts/esp32s3/*
+        path: artifacts/esp32s3/*
         if-no-files-found: error
         
