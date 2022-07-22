@@ -25,8 +25,10 @@ jobs:
       with:
         python-version: '3.x'
 
-    - name: List include directory
+    - name: Find include directory
       run: find /usr/include
+
+    - name: List include/python3.8 directory
       run: ls -l /usr/include/python3.8
 
     - name: esp-idf build
