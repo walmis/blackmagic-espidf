@@ -20,6 +20,8 @@ Makefile text eol=lf
 *.yml text eol=lf
 *.rules text eol=lf
 sdkconfig eol=lf
+sdkconfig.defaults.esp32 text eol=lf
+sdkconfig.defaults.esp32s3 text eol=lf
 
 # Git control files
 .gitattributes eol=lf

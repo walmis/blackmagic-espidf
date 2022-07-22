@@ -40,12 +40,36 @@ jobs:
     - name: Install esp-idf
       run: |
         cd esp-idf
-        ./install.sh esp32s3
+        ./install.sh esp32s3,esp32
 
-    - name: Build project
+    - name: Create artifacts directory
       run: |
-        cd esp-idf
-        . export.sh
-        cd ../farpatch
-        idf.py set-target esp32s3
+        mkdir artifacts
+        mkdir artifacts/esp32
+        mkdir artifacts/esp32s3
+
+    - name: Build project for ESP32
+      run: |
+        . esp-idf/export.sh
+        cd farpatch
+        idf.py set-target esp32
+        rm sdkconfig
         idf.py build
+        cp build/blackmagic.bin                       ../artifacts/esp32/blackmagic.bin
+        cp build/blackmagic.elf                       ../artifacts/esp32/blackmagic.elf
+        cp build/bootloader/bootloader.bin            ../artifacts/esp32/bootloader.bin
+        cp build/partition_table/partition_table.bin  ../artifacts/esp32/partition_table.bin
+        cp build/ota_data_initial.bin                 ../artifacts/esp32/ota_data_initial.bin
+
+    - name: Build project for ESP32S3
+      run: |
+        . esp-idf/export.sh
+        cd farpatch
+        idf.py set-target esp32s3
+        rm sdkconfig
+        idf.py build
+        cp build/blackmagic.bin                       ../artifacts/esp32s3/blackmagic.bin
+        cp build/blackmagic.elf                       ../artifacts/esp32s3/blackmagic.elf
+        cp build/bootloader/bootloader.bin            ../artifacts/esp32s3/bootloader.bin
+        cp build/partition_table/partition_table.bin  ../artifacts/esp32s3/partition_table.bin
+        cp build/ota_data_initial.bin                 ../artifacts/esp32s3/ota_data_initial.bin
