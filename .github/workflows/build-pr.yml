@@ -50,7 +50,6 @@ jobs:
         . esp-idf/export.sh
         cd farpatch
         idf.py set-target esp32
-        rm sdkconfig
         idf.py build
 
     - name: Build project for ESP32S3
@@ -58,5 +57,4 @@ jobs:
         . esp-idf/export.sh
         cd farpatch
         idf.py set-target esp32s3
-        rm sdkconfig
         idf.py build

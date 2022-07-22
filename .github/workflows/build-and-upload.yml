@@ -56,7 +56,6 @@ jobs:
         . esp-idf/export.sh
         cd farpatch
         idf.py set-target esp32
-        rm sdkconfig
         idf.py build
         cp build/blackmagic.bin                       ../artifacts/esp32/blackmagic.bin
         cp build/blackmagic.elf                       ../artifacts/esp32/blackmagic.elf
@@ -69,7 +68,6 @@ jobs:
         . esp-idf/export.sh
         cd farpatch
         idf.py set-target esp32s3
-        rm sdkconfig
         idf.py build
         cp build/blackmagic.bin                       ../artifacts/esp32s3/blackmagic.bin
         cp build/blackmagic.elf                       ../artifacts/esp32s3/blackmagic.elf
