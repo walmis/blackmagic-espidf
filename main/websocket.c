@@ -116,6 +116,20 @@ esp_err_t cgi_websocket(httpd_req_t *req)
 
 	if (req->method == HTTP_GET) {
 		int sockfd = httpd_req_to_sockfd(req);
+		int opt;
+
+		// Time out websockets after 30 seconds
+		opt = 10;
+		assert(setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&opt, sizeof(opt)) != -1);
+		opt = 5;
+		assert(setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&opt, sizeof(opt)) != -1);
+		opt = 4;
+		assert(setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, (void *)&opt, sizeof(opt)) != -1);
+
+		// Enable reusing this socket
+		opt = 1;
+		assert(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (void *)&opt, sizeof(opt)) != -1);
+
 		ESP_LOGI(__func__, "handshake done on %s, the new connection was opened with sockfd %d", req->uri, sockfd);
 		int i;
 		int free_idx = -1;
