@@ -82,11 +82,3 @@ If the firmware is already on the device, it is possible to flash using tftp. Ma
 ```bash
 tftp -v -m octet $FARPATCH_IP -c put build/blackmagic.bin firmware.bin
 ```
-
-## Buy me a coffee
-
-If you find this project useful, consider buying the original author a coffee :-)
-
-[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=66JLPHXMD3XW2)
-
-Don't forget to support Blackmagic developers !
