@@ -22,7 +22,7 @@ void raise_exception(uint32_t type, const char *msg)
 			longjmp(e->jmpbuf, type);
 		}
 	}
-	ESP_LOGW("EX", "Unhandled exception %d: %s", type, msg);
+	ESP_LOGW("EX", "Unhandled exception %" PRId32 ": %s", type, msg);
 
 	abort();
 }
