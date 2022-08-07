@@ -29,17 +29,17 @@
 #include "timing.h"
 #include "adiv5.h"
 
-static uint32_t swd_delay_cnt = 0;
+uint32_t swd_delay_cnt = 0;
 
 enum {
 	SWDIO_STATUS_FLOAT = 0,
 	SWDIO_STATUS_DRIVE
 };
 static IRAM_ATTR void swdptap_turnaround(int dir) __attribute__((optimize(3)));
-static IRAM_ATTR uint32_t swdptap_seq_in(int ticks) __attribute__((optimize(3)));
-static IRAM_ATTR bool swdptap_seq_in_parity(uint32_t *ret, int ticks) __attribute__((optimize(3)));
-static IRAM_ATTR void swdptap_seq_out(uint32_t MS, int ticks) __attribute__((optimize(3)));
-static IRAM_ATTR void swdptap_seq_out_parity(uint32_t MS, int ticks) __attribute__((optimize(3)));
+static IRAM_ATTR uint32_t swdptap_seq_in(size_t ticks) __attribute__((optimize(3)));
+static IRAM_ATTR bool swdptap_seq_in_parity(uint32_t *ret, size_t ticks) __attribute__((optimize(3)));
+static IRAM_ATTR void swdptap_seq_out(uint32_t MS, size_t ticks) __attribute__((optimize(3)));
+static IRAM_ATTR void swdptap_seq_out_parity(uint32_t MS, size_t ticks) __attribute__((optimize(3)));
 
 static void swdptap_turnaround(int dir)
 {
@@ -66,7 +66,7 @@ static void swdptap_turnaround(int dir)
 		SWDIO_MODE_DRIVE();
 }
 
-static uint32_t swdptap_seq_in(int ticks)
+static uint32_t swdptap_seq_in(size_t ticks)
 {
 	uint32_t index = 1;
 	uint32_t ret = 0;
@@ -105,7 +105,7 @@ static uint32_t swdptap_seq_in(int ticks)
 	return ret;
 }
 
-static bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
+static bool swdptap_seq_in_parity(uint32_t *ret, size_t ticks)
 {
 	uint32_t index = 1;
 	uint32_t res = 0;
@@ -156,7 +156,7 @@ static bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
 	return (parity & 1);
 }
 
-static void swdptap_seq_out(uint32_t MS, int ticks)
+static void swdptap_seq_out(uint32_t MS, size_t ticks)
 {
 #ifdef DEBUG_SWD_BITS
 	for (int i = 0; i < ticks; i++)
@@ -188,7 +188,7 @@ static void swdptap_seq_out(uint32_t MS, int ticks)
 	// portEXIT_CRITICAL();
 }
 
-static void swdptap_seq_out_parity(uint32_t MS, int ticks)
+static void swdptap_seq_out_parity(uint32_t MS, size_t ticks)
 {
 	int parity = __builtin_popcount(MS);
 #ifdef DEBUG_SWD_BITS
