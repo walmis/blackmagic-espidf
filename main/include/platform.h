@@ -21,14 +21,6 @@
 #ifndef __PLATFORM_H
 #define __PLATFORM_H
 
-#undef PRIx32
-#undef PRIX32
-#define PRIx32 "x"
-#define PRIX32 "x"
-
-#undef SCNx32
-#define SCNx32 "x"
-
 #include "esp_log.h"
 #include "esp_attr.h"
 #include "timing.h"
