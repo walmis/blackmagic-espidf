@@ -31,7 +31,7 @@
       if (socket && !socket.replacementCreated) {
         socket.close();
       }
-      socket = new WebSocket("ws://" + window.location.host + "/debugws");
+      socket = new WebSocket("ws://" + window.location.host + "/ws/debug");
       socket.binaryType = 'arraybuffer';
       socket.replacementCreated = false;
       socket.ontimeout = function () {

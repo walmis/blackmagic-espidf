@@ -1,16 +1,9 @@
-set(srcs "gdb_if.cpp"
-    "gdb_main.cpp"
-    "hashmap.cpp"
-    "http.c"
-    "ota-tftp.c"
-    "platform.c"
-    "rtt.c"
-    "tinyprintf.c"
-    "websocket.c"
-    )
-set(incs, "."
-    "include")
 
-idf_component_register(SRC_DIRS "."
+idf_component_register(
+    REQUIRES soc nvs_flash ulp driver esp_http_server app_update esp_event esp_wifi esp32-wifi-manager blackmagic frogfs
+    SRC_DIRS "."
     INCLUDE_DIRS "."
-    "include")
+                 "include"
+                 "../components/blackmagic"
+)
+component_compile_options(-Wno-error=format= -Wno-format)

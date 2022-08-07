@@ -5,7 +5,7 @@
 
 #define TAG "bmp-adc"
 
-#define ADC_CHANNEL ADC_CHANNEL_7
+#define ADC_CHANNEL ADC_CHANNEL_8
 #define ADC_UNIT    ADC_UNIT_1
 
 static bool adc_calibration_init(adc_unit_t unit, adc_atten_t atten, adc_cali_handle_t *out_handle)

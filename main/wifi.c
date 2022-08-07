@@ -25,7 +25,7 @@ void bm_update_wifi_ssid(void)
 
 void bm_update_wifi_ps(void)
 {
-	wifi_settings.sta_power_save = WIFI_PS_MAX_MODEM;
+	// wifi_settings.sta_power_save = WIFI_PS_MAX_MODEM;
 }
 
 esp_err_t cgi_ap_json(httpd_req_t *req)

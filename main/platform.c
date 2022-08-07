@@ -68,7 +68,6 @@
 #define TAG "farpatch"
 
 nvs_handle h_nvs_conf;
-uint32_t swd_delay_cnt;
 
 static uint32_t frequency;
 

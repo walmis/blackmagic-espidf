@@ -111,7 +111,7 @@
         socket.close();
       }
 
-      socket = new WebSocket("ws://" + window.location.host + "/rtt");
+      socket = new WebSocket("ws://" + window.location.host + "/ws/rtt");
       socket.binaryType = 'arraybuffer';
       socket.replacementCreated = false;
 

@@ -15,7 +15,7 @@
 
 #ifdef ENABLE_DEBUG
 // Redefine a bunch of ESP debug macros here without the trailing linefeed
-#define LOG_FORMAT_BMP(letter, format)             LOG_COLOR_##letter #letter " (%d) %s: " format LOG_RESET_COLOR
+#define LOG_FORMAT_BMP(letter, format)             LOG_COLOR_##letter #letter " (%" PRIu32 ") %s: " format LOG_RESET_COLOR
 #define LOG_SYSTEM_TIME_FORMAT_BMP(letter, format) LOG_COLOR_##letter #letter " (%s) %s: " format LOG_RESET_COLOR
 
 #define ESP_LOGE_BMP(tag, format, ...) ESP_LOG_LEVEL_LOCAL_BMP(ESP_LOG_ERROR, tag, format, ##__VA_ARGS__)

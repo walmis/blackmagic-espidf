@@ -434,30 +434,31 @@ static const httpd_uri_t basic_handlers[] = {
 		.handler = cgi_status,
 	},
 	{
-		.uri = "/terminal",
+		.uri = "/ws/uart",
 		.method = HTTP_GET,
 		.handler = cgi_websocket,
 		.user_ctx = (void *)&uart_websocket,
 		.is_websocket = true,
 	},
 	{
-		.uri = "/debugws",
+		.uri = "/ws/debug",
 		.method = HTTP_GET,
 		.handler = cgi_websocket,
 		.user_ctx = (void *)&debug_websocket,
 		.is_websocket = true,
 	},
 	{
-		.uri = "/rtt/status",
-		.handler = cgi_rtt_status,
-		.method = HTTP_GET,
-	},
-	{
-		.uri = "/rtt",
+		.uri = "/ws/rtt",
 		.method = HTTP_GET,
 		.handler = cgi_websocket,
 		.user_ctx = (void *)&rtt_websocket,
 		.is_websocket = true,
+	},
+
+	{
+		.uri = "/rtt/status",
+		.handler = cgi_rtt_status,
+		.method = HTTP_GET,
 	},
 
 	// Wifi Manager

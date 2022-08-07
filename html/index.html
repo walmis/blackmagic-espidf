@@ -166,7 +166,7 @@
     var socket;
 
     function createSocket() {
-      socket = new WebSocket("ws://" + window.location.host + "/terminal");
+      socket = new WebSocket("ws://" + window.location.host + "/ws/uart");
       socket.binaryType = 'arraybuffer';
       socket.onopen = function (e) {
         term.write("\x1B[1;3;31m[Websocket] Connection established\x1B[0m\r\n");
