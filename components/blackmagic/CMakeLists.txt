@@ -24,7 +24,7 @@ idf_component_register(
                       "../../main/include"
 )
 add_definitions(-DPROBE_HOST=esp32 -DPC_HOSTED=0 -DNO_LIBOPENCM3=1 -DENABLE_RTT)
-component_compile_options(-Wno-error=char-subscripts -Wno-char-subscripts -Wno-error=format= -Wno-format)
+component_compile_options(-Wno-error=char-subscripts -Wno-char-subscripts)
 
 #set(ulp_app_name ulp_bmp)
 #set(ulp_riscv_sources "ulp/main.c")
