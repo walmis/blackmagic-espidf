@@ -6,3 +6,4 @@ idf_component_register(
                  "include"
                  "../components/blackmagic"
 )
+component_compile_options(-Wno-error=format= -Wno-format)
