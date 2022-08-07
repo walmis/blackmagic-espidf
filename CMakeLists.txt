@@ -35,5 +35,9 @@ add_custom_target(create_mapfile
   BYPRODUCTS "blackmagic.map")
 
 # Enable debug symbols, making it easier to work with the generated ELF file.
-set(CMAKE_CXX_FLAGS_RELEASE  "-g -ggdb3")
-set(CMAKE_C_FLAGS_RELEASE  "-g -ggdb3")
+set(CMAKE_CXX_FLAGS_RELEASE  "${CMAKE_CXX_FLAGS_RELEASE} -g -ggdb3")
+set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} -g -ggdb3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -ggdb3")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -ggdb3")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -g -ggdb3")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -g -ggdb3")
