@@ -118,7 +118,7 @@ esp_err_t cgi_rtt_status(httpd_req_t *req)
 	value_string[0] = '\0';
 	for (uint32_t i = 0; (i < MAX_RTT_CHAN) && channel_count; i++) {
 		if (rtt_channel[i].is_enabled) {
-			len += snprintf(value_string + len, sizeof(value_string) - len, "%d", i);
+			len += snprintf(value_string + len, sizeof(value_string) - len, PRId32, i);
 			// Append a ',' if this isn't the last character
 			if (channel_count > 1) {
 				channel_count -= 1;

@@ -20,7 +20,7 @@ void bm_update_wifi_ssid(void)
 {
 	uint64_t chipid;
 	esp_read_mac((uint8_t *)&chipid, ESP_MAC_WIFI_SOFTAP);
-	snprintf((char *)wifi_settings.ap_ssid, sizeof(wifi_settings.ap_ssid) - 1, "Farpatch_%X", (uint32_t)chipid);
+	snprintf((char *)wifi_settings.ap_ssid, sizeof(wifi_settings.ap_ssid) - 1, "Farpatch_%" PRIX32, (uint32_t)chipid);
 }
 
 void bm_update_wifi_ps(void)

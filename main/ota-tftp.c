@@ -94,13 +94,13 @@ static int ota_tftp_init()
 	}
 
 	if (configured_part != running_part) {
-		ESP_LOGW(TAG, "Configured OTA boot partition at offset 0x%08x, but running from offset 0x%08x",
+		ESP_LOGW(TAG, "Configured OTA boot partition at offset 0x%08" PRIx32 ", but running from offset 0x%08" PRIx32,
 			configured_part->address, running_part->address);
 		ESP_LOGW(TAG, "(This can happen if either the OTA boot data or preferred boot image become corrupted "
 					  "somehow.)");
 	}
-	ESP_LOGI(TAG, "Running partition type %d subtype %d (offset 0x%08x)", running_part->type, running_part->subtype,
-		running_part->address);
+	ESP_LOGI(TAG, "Running partition type %" PRId8 " subtype %" PRIu8 " (offset 0x%08" PRIx32 ")", running_part->type,
+		running_part->subtype, running_part->address);
 
 	update_part = esp_ota_get_next_update_partition(NULL);
 

@@ -330,7 +330,7 @@ void app_main(void)
 	ESP_LOGI(TAG, "starting tftp server");
 	ota_tftp_init_server(69, 4);
 
-	ESP_LOGI(__func__, "Free heap %d", esp_get_free_heap_size());
+	ESP_LOGI(__func__, "Free heap %" PRId32, esp_get_free_heap_size());
 
 	// Wait two seconds for the system to stabilize before confirming the
 	// new firmware image works. This gives us time to ensure the new

@@ -122,7 +122,7 @@ static void gdb_wifi_task(void *arg)
 		if (e.type) {
 			gdb_putpacketz("EFF");
 			target_list_free();
-			ESP_LOGI("exception", "TARGET LOST e.type:%d", e.type);
+			ESP_LOGI("exception", "TARGET LOST e.type:%" PRId32, e.type);
 			// morse("TARGET LOST.", 1);
 		}
 	}
@@ -209,7 +209,7 @@ static void gdb_wifi_if_putchar(struct gdb_wifi_instance *instance, unsigned cha
 static void new_gdb_wifi_instance(int sock)
 {
 	char name[CONFIG_FREERTOS_MAX_TASK_NAME_LEN];
-	snprintf(name, sizeof(name) - 1, "gdbc fd:%d", sock);
+	snprintf(name, sizeof(name) - 1, "gdbc fd:%" PRId16, sock);
 
 	struct gdb_wifi_instance *instance = malloc(sizeof(struct gdb_wifi_instance));
 	if (!instance) {

@@ -131,29 +131,29 @@ static esp_err_t cgi_status_header(httpd_req_t *req)
 	// 	}
 
 	snprintf(buffer, sizeof(buffer),
-		"free_heap: %u\n"
-		"uptime: %d\n",
+		"free_heap: %" PRIu32 "\n"
+		"uptime: %" PRIu32 "\n",
 		esp_get_free_heap_size(), xTaskGetTickCount() * portTICK_PERIOD_MS);
 	httpd_resp_sendstr_chunk(req, buffer);
 
 	snprintf(buffer, sizeof(buffer),
-		"debug_baud_rate: %d\n"
-		"target_baud_rate: %d\n"
-		"swo_baud_rate: %d\n",
+		"debug_baud_rate: %" PRIu32 "\n"
+		"target_baud_rate: %" PRIu32 "\n"
+		"swo_baud_rate: %" PRIu32 "\n",
 		esp_debug_baud, target_baud, swo_baud);
 	httpd_resp_sendstr_chunk(req, buffer);
 
-	snprintf(buffer, sizeof(buffer), "target voltage: %d mV\n", adc_read_system_voltage());
+	snprintf(buffer, sizeof(buffer), "target voltage: %" PRIu32 " mV\n", adc_read_system_voltage());
 	httpd_resp_sendstr_chunk(req, buffer);
 
 	snprintf(buffer, sizeof(buffer),
-		"uart_overruns: %d\n"
-		"uart_frame_errors: %d\n"
-		"uart_queue_full_cnt: %d\n"
-		"uart_rx_count: %d\n"
-		"uart_tx_count: %d\n"
-		"uart_irq_count: %d\n"
-		"uart_rx_data_relay: %d\n",
+		"uart_overruns: %" PRIu32 "\n"
+		"uart_frame_errors: %" PRIu32 "\n"
+		"uart_queue_full_cnt: %" PRIu32 "\n"
+		"uart_rx_count: %" PRIu32 "\n"
+		"uart_tx_count: %" PRIu32 "\n"
+		"uart_irq_count: %" PRIu32 "\n"
+		"uart_rx_data_relay: %" PRIu32 "\n",
 		uart_overrun_cnt, uart_frame_error_cnt, uart_queue_full_cnt, uart_rx_count, uart_tx_count, uart_irq_count,
 		uart_rx_data_relay);
 	httpd_resp_sendstr_chunk(req, buffer);
@@ -186,8 +186,8 @@ static esp_err_t cgi_status_header(httpd_req_t *req)
 	}
 
 	snprintf(buffer, sizeof(buffer),
-		"current partition: 0x%08x %d\n"
-		"next partition: 0x%08x %d\n"
+		"current partition: 0x%08" PRIx32 " %" PRIu8 "\n"
+		"next partition: 0x%08" PRIx32 " %" PRIu8 "\n"
 		"%s",
 		current_partition->address, current_partition_state, next_partition_address, next_partition_state,
 		update_status);
@@ -268,11 +268,11 @@ static esp_err_t cgi_status(httpd_req_t *req)
 		tsk->ulRunTimeCounter -= last_task_time;
 
 		len = snprintf(buff, sizeof(buff),
-			"\tid: %3u, name: %16s, prio: %3u, state: %10s, stack_hwm: %5u, "
+			"\tid: %3u, name: %16s, prio: %3" PRIu8 ", state: %10s, stack_hwm: %5" PRIu32 ", "
 #if CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID
 			"core: %3s, "
 #endif
-			"cpu: %3d%%, pc: 0x%08x\n",
+			"cpu: %3" PRId32 "%%, pc: 0x%08" PRIx32 "\n",
 			tsk->xTaskNumber, tsk->pcTaskName, tsk->uxCurrentPriority, task_state_name[tsk->eCurrentState],
 			tsk->usStackHighWaterMark,
 #if CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID
