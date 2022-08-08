@@ -18,7 +18,6 @@
 #include "esp_attr.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
-#include "hal/interrupt_controller_hal.h"
 
 const static char http_cache_control_hdr[] = "Cache-Control";
 const static char http_cache_control_no_cache[] = "no-store, no-cache, must-revalidate, max-age=0";
