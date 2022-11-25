@@ -160,6 +160,18 @@ uint32_t platform_time_ms(void) {
   return xTaskGetTickCount() * portTICK_PERIOD_MS;
 }
 
+void platform_target_clk_output_enable(bool enable) {
+
+}
+
+void platform_nrst_set_val(bool assert) {
+
+}
+
+bool platform_nrst_get_val() {
+  return 0;
+}
+
 #define vTaskDelayMs(ms)	vTaskDelay((ms)/portTICK_PERIOD_MS)
 
 void platform_delay(uint32_t ms) {
@@ -337,7 +349,7 @@ void platform_set_baud(uint32_t baud) {
 	nvs_set_u32(h_nvs_conf, "uartbaud", baud);
 }
 
-bool cmd_setbaud(target *t, int argc, const char **argv) {
+bool cmd_setbaud(target_s *t, int argc, const char **argv) {
 
 	if (argc == 1) {
 		uint32_t baud;
@@ -353,6 +365,8 @@ bool cmd_setbaud(target *t, int argc, const char **argv) {
 
   return 1;
 }
+
+void wifi_init_softap();
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
@@ -393,8 +407,14 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         if (info->disconnected.reason == WIFI_REASON_BASIC_RATE_NOT_SUPPORT) {
             /*Switch to 802.11 bgn mode */
             //esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCAL_11B | WIFI_PROTOCAL_11G | WIFI_PROTOCAL_11N);
+        } else
+        if(info->disconnected.reason == WIFI_REASON_NO_AP_FOUND) {
+	        esp_wifi_disconnect();
+	        wifi_init_softap();
+        } else {
+          esp_wifi_connect();
         }
-        esp_wifi_connect();
+        
         //xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
         break;
     default:
@@ -403,13 +423,10 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
 }
 
-#if CONFIG_ESP_WIFI_MODE_AP
+
 void wifi_init_softap()
 {
     //wifi_event_group = xEventGroupCreate();
-
-    tcpip_adapter_init();
-    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
 
     uint8_t val = 0;
     tcpip_adapter_dhcps_option(TCPIP_ADAPTER_OP_SET, TCPIP_ADAPTER_ROUTER_SOLICITATION_ADDRESS, &val, sizeof(dhcps_offer_t));
@@ -428,8 +445,8 @@ void wifi_init_softap()
 
     uint64_t chipid;
     esp_read_mac((uint8_t*)&chipid, ESP_MAC_WIFI_SOFTAP);
-
-    if(strcmp(CONFIG_ESP_WIFI_SSID, "auto") == 0) {
+    
+    if(strcmp(CONFIG_ESP_WIFI_SSID, "auto") == 0 || CONFIG_ESP_WIFI_IS_STATION) {
         wifi_config.ap.ssid_len = sprintf((char*)wifi_config.ap.ssid, "blackmagic_%X", (uint32_t)chipid);
     } else {
         wifi_config.ap.ssid_len = sprintf((char*)wifi_config.ap.ssid, CONFIG_ESP_WIFI_SSID);
@@ -437,17 +454,16 @@ void wifi_init_softap()
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
+    esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N );
+
     ESP_ERROR_CHECK(esp_wifi_start());
 
 }
-#endif
-#if CONFIG_ESP_WIFI_IS_STATION
+
+
 void wifi_init_sta()
 {
     ESP_LOGI(__func__, "wifi_init_sta begun.");
-
-    tcpip_adapter_init();
-    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
 
     uint8_t mac_address[8];
     esp_err_t result;
@@ -473,13 +489,15 @@ void wifi_init_sta()
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM) );
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
+        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N ));
 
     ESP_ERROR_CHECK(esp_wifi_start() );
+
 
     ESP_LOGI(__func__, "wifi_init_sta finished.");
 
 }
-#endif
+
 //wifi_softap_set_dhcps_offer_option(OFFER_ROUTER, 0)
 void uart_send_break() {
   uart_wait_tx_done(0, 10);
@@ -525,16 +543,16 @@ void app_main(void) {
   ESP_ERROR_CHECK(ret);
 
   ESP_ERROR_CHECK(nvs_open("config", NVS_READWRITE, &h_nvs_conf));
-
+  
+  tcpip_adapter_init();
+  ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
+  
 #if CONFIG_ESP_WIFI_IS_STATION
   wifi_init_sta();
 #else
   wifi_init_softap();
 
-  esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11N );
 #endif
-
-  //esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B);
 
   httpd_start();
 

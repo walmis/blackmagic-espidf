@@ -12,6 +12,7 @@
 #include <libesphttpd/httpd-espfs.h>
 #include <libesphttpd/httpd-freertos.h>
 #include <libesphttpd/cgiredirect.h>
+#include "esp_wifi.h"
 #include "espfs.h"
 #include "driver/uart.h"
 #include <FreeRTOS.h>
@@ -94,6 +95,37 @@ CgiStatus cgi_baud(HttpdConnData *connData) {
   uart_get_baudrate(0, &baud);
 
   len = snprintf(buff, sizeof(buff), "{\"baudrate\": %u }", baud);
+
+  httpdStartResponse(connData, 200);
+  httpdHeader(connData, "Content-Type", "text/json");
+  httpdEndHeaders(connData);
+
+  httpdSend(connData, buff, len);
+
+
+  return HTTPD_CGI_DONE;
+}
+
+CgiStatus cgi_tx_power(HttpdConnData *connData) {
+  int len;
+  char buff[64];
+
+  if (connData->isConnectionClosed) {
+    //Connection aborted. Clean up.
+    return HTTPD_CGI_DONE;
+  }
+
+  len=httpdFindArg(connData->getArgs, "set", buff, sizeof(buff));
+  if (len>0) {
+    int baud = atoi(buff);
+    //printf("baud %d\n", baud);
+    esp_wifi_set_max_tx_power(baud);
+  }
+
+  int8_t power = 0;
+  esp_wifi_get_max_tx_power(&power);
+
+  len = snprintf(buff, sizeof(buff), "{\"txpower\": %u }", power);
 
   httpdStartResponse(connData, 200);
   httpdHeader(connData, "Content-Type", "text/json");
@@ -243,6 +275,7 @@ HttpdBuiltInUrl builtInUrls[]={
 //  {"/wifi/wifi.tpl", cgiEspFsTemplate, tplWlan},
 //  {"/wifi/connect.cgi", cgiWiFiConnect, NULL},
 //  {"/wifi/connstatus.cgi", cgiWiFiConnStatus, NULL},
+  {"/wifi/txpower", cgi_tx_power, NULL, 0},
   {"/uart/baud", cgi_baud, NULL, 0},
   {"/uart/break", cgi_uart_break, NULL, 0},
   {"/status", cgi_status, NULL, 0},

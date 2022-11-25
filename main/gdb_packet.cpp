@@ -71,7 +71,7 @@ int GDB::gdb_getpacket(char *packet, int size)
 					case REMOTE_EOM:{ /* Complete packet for processing */
 						packet[i]=0;
 						GDB_LOCK();
-						remotePacketProcess(i,packet);
+						remote_packet_process(i,packet);
 						gettingRemotePacket=false;
 						break;
 					}

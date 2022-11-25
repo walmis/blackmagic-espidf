@@ -39,9 +39,9 @@ void platform_set_baud(uint32_t baud);
 #define SET_IDLE_STATE(state)
 #define SET_ERROR_STATE(state)
 
-#define ENABLE_DEBUG
+#define ENABLE_DEBUG 1
 #define DEBUG(x, ...) do { TRIM(out, x); ESP_LOGD("BMP", out, ##__VA_ARGS__); } while (0)
-
+#define DEBUG_SWD_BITS 1
 
 #include "timing.h"
 #include "driver/gpio.h"
@@ -68,20 +68,25 @@ void platform_set_baud(uint32_t baud);
 
 
 #define gpio_enable(pin, mode) do { gpio_set_direction(pin, mode); } while(0)
+
 #define gpio_set(port, pin) do {GPIO.out_w1ts = (0x1 << pin); } while(0)
 #define gpio_clear(port, pin) do{GPIO.out_w1tc = (0x1 << pin);} while(0)
-#define gpio_get(port, pin) ((GPIO.in >> pin)&0x1)
-#define gpio_set_val(port, pin, value) if(value) { gpio_set(port, pin); } else { gpio_clear(port, pin); }	
+#define gpio_get(port, pin) (GPIO.in & (1<<pin))
+
+
+#define gpio_set_val(port, pin, value) if (value) gpio_set(port, pin); else gpio_clear(port, pin) 
 
 #define GPIO_INPUT GPIO_MODE_INPUT
 #define GPIO_OUTPUT GPIO_MODE_OUTPUT
 
 #define SWDIO_MODE_FLOAT() 			\
-		gpio_set_direction(SWDIO_PIN, GPIO_MODE_INPUT);	\
+		GPIO.enable_w1tc = (0x1 << SWDIO_PIN);
 
 
 #define SWDIO_MODE_DRIVE() 				\
-		gpio_set_direction(SWDIO_PIN, GPIO_MODE_OUTPUT);	\
+		GPIO.enable_w1ts = (0x1 << SWDIO_PIN);
+
+		//gpio_set_direction(SWDIO_PIN, GPIO_MODE_OUTPUT);	
 	
 
 #define PLATFORM_HAS_DEBUG 

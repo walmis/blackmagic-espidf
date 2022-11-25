@@ -49,6 +49,8 @@
 #define EXCEPTION_TIMEOUT 0x02
 #define EXCEPTION_ALL     -1
 
+typedef struct exception exception_s;
+
 struct exception {
 	uint32_t type;
 	const char *msg;

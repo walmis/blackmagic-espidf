@@ -9,6 +9,6 @@ PROJECT_NAME := blackmagic
 
 include $(IDF_PATH)/make/project.mk
 CFLAGS += -DPC_HOSTED=0 -DNO_LIBOPENCM3=1
-
+HOST?=192.168.4.1
 tftpflash: build/$(PROJECT_NAME).bin
-	tftp -v -m octet 192.168.4.1 -c put build/$(PROJECT_NAME).bin firmware.bin
+	tftp -v -m octet $(HOST) -c put build/$(PROJECT_NAME).bin firmware.bin

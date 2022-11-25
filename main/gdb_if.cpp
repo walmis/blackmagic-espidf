@@ -306,7 +306,7 @@ void gdb_outf(const char *fmt, ...) {
 }
 
 extern "C"
-void gdb_putpacket(const char *packet, int size) {
+void gdb_putpacket(const char *packet, size_t size) {
 	void** ptr = (void**)pvTaskGetThreadLocalStoragePointer(NULL, 0);
 	assert(ptr);
 	GDB* _this = (GDB*)ptr[0];

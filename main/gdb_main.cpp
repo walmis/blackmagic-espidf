@@ -54,8 +54,8 @@ enum gdb_signal {
 #define ERROR_IF_NO_TARGET()	\
 	GDB_LOCK(); if(!cur_target) { gdb_putpacketz("EFF"); break; }
 
-static target *cur_target;
-static target *last_target;
+static target_s *cur_target;
+static target_s *last_target;
 
 static void gdb_target_destroy_callback(struct target_controller *tc, target *t)
 {
@@ -121,7 +121,7 @@ static bool cmd_write_dp(target *t, int argc, const char **argv) {
 
 	uint32_t addr = strtoul(argv[1], 0, 16);
 	uint32_t val = strtoul(argv[2], 0, 16);
-	ADIv5_AP_t *ap = cortexm_ap(cur_target);
+	adiv5_access_port_s *ap = cortexm_ap(cur_target);
 	//adiv5_dp_write(ap->dp, addr, val);
 
 	return 255;
@@ -131,7 +131,7 @@ static bool cmd_read_ap(target *t, int argc, const char **argv) {
 	if(!cur_target) {
 		return false;
 	}
-	ADIv5_AP_t *ap = cortexm_ap(cur_target);
+	adiv5_access_port_s *ap = cortexm_ap(cur_target);
 	uint32_t addr = strtoul(argv[1], 0, 16);
 	ESP_LOGI(__func__, "addr: %x", addr);
 	uint32_t reg = adiv5_dp_read(ap->dp, ADIV5_AP_BASE);
@@ -163,7 +163,7 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 				if(devs > 0) {
 					cur_target = target_attach_n(1, &gdb_controller);
 					if(cur_target) {
-						static const struct command_s cmds[]  = { 
+						static const command_s cmds[]  = { 
 							{"reset", cmd_reset, "OpenOCD style target reset: reset [init halt run]"}, 
 							{"WriteDP", cmd_write_dp, "STLINK helper"},
 							{"ReadAP", cmd_read_ap, "STLINK helper"},
@@ -194,7 +194,7 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 		if(size == 0) {
 			GDB_LOCK();
 			if(run_state && cur_target) {
-				target_addr watch;
+				target_addr_t watch;
 				enum target_halt_reason reason = TARGET_HALT_RUNNING;
 				reason = target_halt_poll(cur_target, &watch);
 
@@ -344,7 +344,7 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 		case '?': {	/* '?': Request reason for target halt */
 			/* This packet isn't documented as being mandatory,
 			 * but GDB doesn't work without it. */
-			target_addr watch;
+			target_addr_t watch;
 			enum target_halt_reason reason = TARGET_HALT_RUNNING;
 			GDB_LOCK();
 
@@ -631,7 +631,11 @@ GDB::handle_q_packet(char *packet, int len)
 			gdb_putpacketz("E01");
 			return;
 		}
-		gdb_putpacket_f("C%lx", generic_crc32(cur_target, addr, alen));
+		uint32_t crc;
+		if (!generic_crc32(cur_target, &crc, addr, alen))
+			gdb_putpacketz("E03");
+		else
+			gdb_putpacket_f("C%lx", crc);
 
 	} else {
 		DEBUG_GDB("*** Unsupported packet: %s\n", packet);
@@ -770,7 +774,7 @@ GDB::handle_v_packet(char *packet, int plen)
 	} else if (!strcmp(packet, "vFlashDone")) {
 		/* Commit flash operations. */
 		GDB_LOCK();
-		gdb_putpacketz(target_flash_done(cur_target) ? "EFF" : "OK");
+		gdb_putpacketz(target_flash_complete(cur_target) ? "EFF" : "OK");
 		flash_mode = 0;
 	} else if (!strcmp(packet, "vStopped")) {
 		DEBUG_GDB("vStopped\n");
