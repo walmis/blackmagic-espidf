@@ -57,11 +57,27 @@ enum gdb_signal {
 static target_s *cur_target;
 static target_s *last_target;
 
-static void gdb_target_destroy_callback(struct target_controller *tc, target *t)
+void gdb_target_destroy_callback(struct target_controller *tc, target *t)
 {
+		(void)tc;
+	//TODO
+	//gdb_voutf(fmt, ap);
+	void** ptr = (void**)pvTaskGetThreadLocalStoragePointer(NULL, 0);
+	assert(ptr);
+	GDB* _this = (GDB*)ptr[0];
+
+	ESP_LOGI(__func__, "gdb_target_destroy_callback %p\n", t);
+
+	
 	(void)tc;
-	if (cur_target == t)
+	if (cur_target == t) {
+		_this->gdb_put_notificationz("%Stop:W00");
+		_this->gdb_out("You are now detached from the previous target.\n");
+		_this->gdb_needs_detach_notify = true;
+
 		cur_target = NULL;
+
+	}
 
 	if (last_target == t)
 		last_target = NULL;
@@ -493,7 +509,9 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 			}
 			DEBUG_GDB("X packet: addr = %" PRIx32 ", len = %" PRIx32 "\n",
 					  addr, len);
-			if (target_mem_write(cur_target, addr, pbuf+bin, len))
+		    uint8_t alignas(4) data[len] ;
+		    memcpy(data, pbuf+bin, len);
+			if (target_mem_write(cur_target, addr, data, len))
 				gdb_putpacketz("E01");
 			else
 				gdb_putpacketz("OK");
@@ -570,6 +588,18 @@ GDB::handle_q_packet(char *packet, int len)
 		unhexify(data, packet+6, datalen);
 		data[datalen] = 0;	/* add terminating null */
 		ESP_LOGI("CMD", "%s", data);
+
+		if(!strncmp(data, "reset", 5)) {
+			if(cur_target) {
+				ESP_LOGI(__func__, "resetting target");
+				target_reset(cur_target);
+				gdb_putpacketz("OK");
+			} else {
+			gdb_putpacketz("E");
+			}
+			return;
+		}
+
 		int c = command_process(cur_target, data);
 		if(!strcmp(data, "ReadAP") || !strcmp(data, "WriteDP")) {
 			return;
@@ -584,9 +614,9 @@ GDB::handle_q_packet(char *packet, int len)
 
 	} else if (!strncmp (packet, "qSupported", 10)) {
 		/* Query supported protocol features */
-		gdb_putpacket_f("PacketSize=%X;qXfer:memory-map:read+;qXfer:features:read+;QNonStop+;QStartNoAckMode+;qXfer:threads:read+", BUF_SIZE);
-	} else if (strncmp (packet, "qXfer:threads:read::", 20) == 0) {
-		gdb_putpacket_f("l<?xml version=\"1.0\"?><threads><thread id=\"1\" core=\"0\" name=\"main\"></thread></threads>");
+		gdb_putpacket_f("PacketSize=%X;qXfer:memory-map:read+;qXfer:features:read+;QNonStop+;QStartNoAckMode+"/*;qXfer:threads:read+"*/, BUF_SIZE);
+	// } else if (strncmp (packet, "qXfer:threads:read::", 20) == 0) {
+	// 	gdb_putpacket_f("l<?xml version=\"1.0\"?><threads><thread id=\"1\" core=\"0\" name=\"main\"></thread></threads>");
 	} else if (strncmp (packet, "qAttached", 9) == 0) {
 		gdb_putpacket_f("%d", !!cur_target);
 
@@ -637,6 +667,27 @@ GDB::handle_q_packet(char *packet, int len)
 		else
 			gdb_putpacket_f("C%lx", crc);
 
+	} else if (strcmp(packet, "qC") == 0) {
+		/*
+ * qC queries are for the current thread. We don't support threads but GDB 11 and 12 require this,
+ * so we always answer that the current thread is thread 1.
+ */
+		gdb_putpacketz("QC1");
+
+
+	} else if (strcmp(packet, "qfThreadInfo") == 0 || strcmp(packet, "qsThreadInfo") == 0) {
+		/*
+		* qfThreadInfo queries are required in GDB 11 and 12 as these GDBs require the server to support
+		* threading even when there's only the possiblity for one thread to exist. In this instance,
+		* we have to tell GDB that there is a single active thread so it doesn't think the "thread" died.
+		* qsThreadInfo will always follow qfThreadInfo when we reply as we have to specify 'l' at the
+		* end to terminate the list.. GDB doesn't like this not happening.
+		*/
+		if (packet[1] == 'f')
+			gdb_putpacketz("m1");
+		else
+			gdb_putpacketz("l");
+
 	} else {
 		DEBUG_GDB("*** Unsupported packet: %s\n", packet);
 		gdb_putpacket("", 0);
@@ -655,7 +706,7 @@ GDB::handle_v_packet(char *packet, int plen)
 		GDB_LOCK();
 		cur_target = target_attach_n(addr, &gdb_controller);
 		if(cur_target)
-			gdb_putpacketz("T05");
+			gdb_putpacketz("T05thread:1;");
 		else
 			gdb_putpacketz("E01");
 
@@ -720,9 +771,11 @@ GDB::handle_v_packet(char *packet, int plen)
 			target_halt_request(cur_target);
 			flash_mode = 1;
 		}
-		if(target_flash_erase(cur_target, addr, len) == 0) {
+		if(target_flash_erase(cur_target, addr, len)) {
 			gdb_putpacketz("OK");
 		} else {
+			DEBUG_GDB("Flash Erase Failed\n");
+
 			flash_mode = 0;
 			gdb_putpacketz("EFF");
 		}
@@ -734,7 +787,7 @@ GDB::handle_v_packet(char *packet, int plen)
 		len = plen - bin;
 		DEBUG_GDB("Flash Write %08lX len:%d\n", addr, len);
 		//ESP_LOG_BUFFER_HEXDUMP("Flash", packet+bin, len, 3);
-		if(cur_target && target_flash_write(cur_target, addr, (void*)(packet + bin), len) == 0) {
+		if(cur_target && target_flash_write(cur_target, addr, (void*)(packet + bin), len)) {
 			gdb_putpacketz("OK");
 		} else {
 			flash_mode = 0;
@@ -771,14 +824,28 @@ GDB::handle_v_packet(char *packet, int plen)
 		}
 		gdb_putpacketz("OK");
 
+	} else if (!strncmp(packet, "vKill;", 6)) {
+		GDB_LOCK();
+		/* Kill the target - we don't actually care about the PID that follows "vKill;" */
+		if (cur_target) {
+			target_reset(cur_target);
+			target_detach(cur_target);
+			last_target = cur_target;
+			cur_target = NULL;
+		}
+		gdb_putpacketz("OK");
+
 	} else if (!strcmp(packet, "vFlashDone")) {
 		/* Commit flash operations. */
 		GDB_LOCK();
-		gdb_putpacketz(target_flash_complete(cur_target) ? "EFF" : "OK");
+		gdb_putpacketz(target_flash_complete(cur_target) ? "OK" : "EFF");
 		flash_mode = 0;
 	} else if (!strcmp(packet, "vStopped")) {
-		DEBUG_GDB("vStopped\n");
-		gdb_putpacketz("OK");
+		if (gdb_needs_detach_notify) {
+			gdb_putpacketz("W00");
+			gdb_needs_detach_notify = false;
+		} else
+			gdb_putpacketz("OK");
 	} else {
 		DEBUG_GDB("*** Unsupported packet: %s\n", packet);
 		gdb_putpacket("", 0);

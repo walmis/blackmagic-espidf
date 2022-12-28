@@ -149,6 +149,24 @@ int GDB::gdb_getpacket(char *packet, int size)
 	return i;
 }
 
+void GDB::gdb_next_char(const char c, uint8_t *const csum)
+{
+#if PC_HOSTED == 1
+	if (c >= 32 && c < 127)
+		DEBUG_GDB_WIRE("%c", c);
+	else
+		DEBUG_GDB_WIRE("\\x%02X", c);
+#endif
+	if (c == '$' || c == '#' || c == '}' || c == '*') {
+		gdb_if_putchar('}', 0);
+		gdb_if_putchar(c ^ 0x20U, 0);
+		*csum += '}' + (c ^ 0x20U);
+	} else {
+		gdb_if_putchar(c, 0);
+		*csum += c;
+	}
+}
+
 void GDB::gdb_putpacket(const char *packet, int size, char pktstart)
 {
 	int i;
@@ -221,6 +239,23 @@ void GDB::gdb_out(const char *buf)
 	hexify(hexdata+1, buf, strlen(buf));
 	gdb_putpacket(hexdata, i);
 }
+
+void GDB::gdb_put_notification(const char *const packet, const size_t size)
+{
+	char xmit_csum[3];
+
+	DEBUG_GDB_WIRE("%s: ", __func__);
+	uint8_t csum = 0;
+	gdb_if_putchar('%', 0);
+	for (size_t i = 0; i < size; ++i)
+		gdb_next_char(packet[i], &csum);
+	gdb_if_putchar('#', 0);
+	snprintf(xmit_csum, sizeof(xmit_csum), "%02X", csum);
+	gdb_if_putchar(xmit_csum[0], 0);
+	gdb_if_putchar(xmit_csum[1], 1);
+	DEBUG_GDB_WIRE("\n");
+}
+
 
 void GDB::gdb_voutf(const char *fmt, va_list ap)
 {

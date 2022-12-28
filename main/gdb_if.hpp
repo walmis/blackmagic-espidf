@@ -39,17 +39,21 @@ public:
     virtual unsigned char gdb_if_getchar(void) = 0;
     virtual void gdb_if_putchar(unsigned char c, int flush) = 0;
     virtual unsigned char gdb_if_getchar_to(int timeout) = 0;
+    void gdb_next_char(const char c, uint8_t *const csum);
 
     int gdb_getpacket(char *packet, int size);
     void gdb_putpacket(const char *packet, int size, char pktstart = '$');
     void gdb_putpacket_f(const char *fmt, ...);
     void gdb_putnotifpacket_f(const char *fmt, ...);
+    void gdb_put_notification(const char *const packet, const size_t size);
 
     void gdb_out(const char *buf);
     void gdb_voutf(const char *fmt, va_list ap);
     void gdb_outf(const char *fmt, ...);
 
     virtual int fileno() = 0;
+
+    bool gdb_needs_detach_notify = false;
 
 protected:
     friend int ::gdb_main_loop(struct target_controller * tc, bool in_syscall);
@@ -65,6 +69,7 @@ protected:
     
 	bool single_step = false;
 	bool run_state = false;
+
 
     inline static  int num_clients = 0;
 };
