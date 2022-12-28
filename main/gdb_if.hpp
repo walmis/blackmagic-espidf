@@ -43,6 +43,7 @@ public:
 
     int gdb_getpacket(char *packet, int size);
     void gdb_putpacket(const char *packet, int size, char pktstart = '$');
+    void gdb_putpacket2(const char *const packet1, const size_t size1, const char *const packet2, const size_t size2);
     void gdb_putpacket_f(const char *fmt, ...);
     void gdb_putnotifpacket_f(const char *fmt, ...);
     void gdb_put_notification(const char *const packet, const size_t size);

@@ -332,6 +332,14 @@ void gdb_putpacket_f(const char *fmt, ...) {
 	va_end(ap);
 }
 
+extern "C"
+void gdb_putpacket2(const char *const packet1, const size_t size1, const char *const packet2, const size_t size2) {
+	void** ptr = (void**)pvTaskGetThreadLocalStoragePointer(NULL, 0);
+	assert(ptr);
+	GDB* _this = (GDB*)ptr[0];
+	_this->gdb_putpacket2(packet1, size1, packet2, size2);
+}
+
 #if 0
 #include "general.h"
 #include "gdb_if.h"

@@ -275,3 +275,27 @@ void GDB::gdb_outf(const char *fmt, ...)
 	gdb_voutf(fmt, ap);
 	va_end(ap);
 }
+
+
+void GDB::gdb_putpacket2(const char *const packet1, const size_t size1, const char *const packet2, const size_t size2)
+{
+	char xmit_csum[3];
+	size_t tries = 0;
+
+	do {
+		DEBUG_GDB_WIRE("%s: ", __func__);
+		uint8_t csum = 0;
+		gdb_if_putchar('$', 0);
+
+		for (size_t i = 0; i < size1; ++i)
+			gdb_next_char(packet1[i], &csum);
+		for (size_t i = 0; i < size2; ++i)
+			gdb_next_char(packet2[i], &csum);
+
+		gdb_if_putchar('#', 0);
+		snprintf(xmit_csum, sizeof(xmit_csum), "%02X", csum);
+		gdb_if_putchar(xmit_csum[0], 0);
+		gdb_if_putchar(xmit_csum[1], 1);
+		DEBUG_GDB_WIRE("\n");
+	} while (gdb_if_getchar_to(2000) != '+' && tries++ < 3U);
+}

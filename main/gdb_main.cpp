@@ -273,10 +273,9 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 		/* Implementation of these is mandatory! */
 		case 'g': { /* 'g': Read general registers */
 			ERROR_IF_NO_TARGET();
-			uint8_t arm_regs[target_regs_size(cur_target)];		
-			target_regs_read(cur_target, arm_regs);
-			gdb_putpacket(hexify(pbuf, arm_regs, sizeof(arm_regs)),
-			              sizeof(arm_regs) * 2);
+			uint8_t gp_regs[target_regs_size(cur_target)];
+			target_regs_read(cur_target, gp_regs);
+			gdb_putpacket(hexify(pbuf, gp_regs, sizeof(gp_regs)), sizeof(gp_regs) * 2U);
 			break;
 			}
 		case 'T': //thread select
@@ -654,7 +653,11 @@ GDB::handle_q_packet(char *packet, int len)
 			gdb_putpacketz("E01");
 			return;
 		}
-		handle_q_string_reply(target_tdesc(cur_target), packet + 31);
+
+		const char *const description = target_regs_description(cur_target);
+	    handle_q_string_reply(description ? description : "", packet + 31);
+	    free((void *)description);
+		
 	} else if (sscanf(packet, "qCRC:%" PRIx32 ",%" PRIx32, &addr, &alen) == 2) {
 		GDB_LOCK();
 		if(!cur_target) {
