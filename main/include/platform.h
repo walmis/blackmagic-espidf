@@ -94,4 +94,6 @@ void platform_set_baud(uint32_t baud);
 #define PLATFORM_IDENT "esp8266"
 #endif
 
+extern bool debug_bmp;
+
 extern uint32_t swd_delay_cnt;

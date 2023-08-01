@@ -66,6 +66,8 @@ uint32_t swd_delay_cnt;
 #define SWD_CYCLES_PER_CLOCK 19L
 #define SWD_TOTAL_CYCLES 127L
 
+bool debug_bmp;
+
 void platform_max_frequency_set(uint32_t freq)
 {
 	if(freq < 50000) return;

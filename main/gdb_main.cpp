@@ -66,7 +66,7 @@ void gdb_target_destroy_callback(struct target_controller *tc, target *t)
 	assert(ptr);
 	GDB* _this = (GDB*)ptr[0];
 
-	ESP_LOGI(__func__, "gdb_target_destroy_callback %p\n", t);
+	ESP_LOGI(__func__, "gdb_target_destroy_callback %p cur_target=%p last_target=%p\n", t, cur_target, last_target);
 
 	
 	(void)tc;
@@ -168,8 +168,8 @@ int GDB::gdb_main_loop(struct target_controller *tc, bool in_syscall)
 	
 	{
 		GDB_LOCK();
-
-		if(!cur_target && !last_target) {
+	    ESP_LOGI(__func__, "cur_target=%p last_target=%p\n", cur_target, last_target);
+		if((!cur_target && !last_target) || num_clients == 1) {
 			ESP_LOGI("GDB", "Scanning SWD");
 			int devs = -1;
 			volatile struct exception e;
