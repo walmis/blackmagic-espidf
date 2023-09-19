@@ -44,6 +44,8 @@ extern "C" {
 
 #include "gdb_if.hpp"
 
+#define BUFFER_SIZE 256
+
 static xSemaphoreHandle gdb_mutex;
 static int gdb_mutex_lockcount;
 
@@ -170,6 +172,10 @@ private:
 
 	unsigned char gdb_if_getchar_to(int timeout) {
 		GDBBreakLock brk;
+		if (buffer_index < buffer_size) {
+			char c = buffer[buffer_index++];
+			return c;
+		}
 
 		fd_set fds;
 		struct timeval tv;
@@ -189,19 +195,25 @@ private:
 	}
 
 	unsigned char gdb_if_getchar(void) {
-		uint8_t tmp;
+		if (buffer_index >= buffer_size) {
+			int ret = recv(sock, buffer, BUFFER_SIZE, 0);
 
-		int ret;
-		ret = recv(sock, &tmp, 1, 0);
-		if(ret <= 0) {
-			destroy();
-			//should not be reached
-			return 0;
+			if (ret <= 0) {
+				destroy();
+				// should not be reached
+				return 0;
+			}
+
+			buffer_size = ret;
+			buffer_index = 0;
 		}
-		// if((tmp == '\x03') || (tmp == '\x04')) {
-		// 	ESP_LOGW(__func__, "Got Interrupt request");
-		// }
-		return tmp;
+
+		// Get the next character from the buffer
+		unsigned char next_char = buffer[buffer_index++];
+
+		// You can add additional processing here if needed
+
+		return next_char;
 	}
     void gdb_if_putchar(unsigned char c, int flush) {
 		buf[bufsize++] = c;
@@ -221,6 +233,9 @@ private:
 	uint8_t buf[256];
 	int bufsize = 0;
 	xTaskHandle pid;
+	unsigned char buffer[BUFFER_SIZE];
+	int buffer_index = 0;
+	int buffer_size = 0;
 	int sock;
 };
 
